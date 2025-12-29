@@ -160,5 +160,5 @@ app.get("/api/users/check/:username", async (req, res) => {
 });
 
 // 🚀 We run the backend (API + WS) on port 5000 ✅
-const PORT = 5000;
+const PORT = process.env || 5000;
 server.listen(PORT, () => {});
