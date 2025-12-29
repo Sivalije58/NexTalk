@@ -31,13 +31,13 @@ function App() {
   useEffect(() => {
     if (username) {
       // load messages from base
-      fetch("http://localhost:5000/api/messages")
+      fetch("https://nextalk-backend-v4df.onrender.com/api/messages")
         .then((res) => res.json())
         .then((data) => setMessages(data))
         .catch((err) => console.error("❌ Loading messages error:", err));
 
       if (!ws.current) {
-        ws.current = new WebSocket("ws://localhost:5000");
+        ws.current = new WebSocket("wss://nextalk-backend-v4df.onrender.com");
 
       ws.current.onmessage = (event) => {
          const msg = JSON.parse(event.data);
@@ -82,7 +82,7 @@ function App() {
     setInput("");
 
     try {
-      const res = await fetch("http://localhost:5000/api/messages", {
+      const res = await fetch("https://nextalk-backend-v4df.onrender.com/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, content: text }),
@@ -107,12 +107,12 @@ function App() {
       const oldMsg = messages.find((msg) => msg.id === id || msg._id === id);
       if (!oldMsg) return console.error("⚠️ Message is not found.");
 
-      const delRes = await fetch(`http://localhost:5000/api/messages/${id}`, {
+      const delRes = await fetch(`https://nextalk-backend-v4df.onrender.com/api/messages/${id}`, {
         method: "DELETE",
       });
       if (!delRes.ok) throw new Error("Deleting old message error.");
 
-      const postRes = await fetch("http://localhost:5000/api/messages", {
+      const postRes = await fetch("https://nextalk-backend-v4df.onrender.com/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: oldMsg.username, content: editContent }),
@@ -139,7 +139,7 @@ function App() {
   // 🔴 Deleting message
   const handleDelete = async (id) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/messages/${id}`, {
+      const res = await fetch(`https://nextalk-backend-v4df.onrender.com/api/messages/${id}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Deleting message error.");
@@ -155,7 +155,7 @@ function App() {
 
 const handleConnect = async (name) => {
   try {
-    const res = await fetch(`http://localhost:5000/api/users/check/${name}`);
+    const res = await fetch(`https://nextalk-backend-v4df.onrender.com/api/users/check/${name}`);
     if (res.ok) {
       alert(`User '${name}' found and connected!`);
       setUsername(name);
@@ -196,7 +196,7 @@ if (showConnectModal) {
         onCancel={() => setShowDeleteConfirm(false)}
         onConfirm={async () => {
           try {
-            const res = await fetch(`http://localhost:5000/api/users/${username}`, {
+            const res = await fetch(`https://nextalk-backend-v4df.onrender.com/api/users/${username}`, {
               method: "DELETE",
             });
 
@@ -342,7 +342,7 @@ if (showConnectModal) {
     onClick={async () => {
     
         try {
-          const res = await fetch("http://localhost:5000/api/sos", { method: "DELETE" });
+          const res = await fetch("https://nextalk-backend-v4df.onrender.com/api/sos", { method: "DELETE" });
           if (!res.ok) throw new Error("SOS Error while deleting ");
           localStorage.removeItem("username");
           setUsername("");
