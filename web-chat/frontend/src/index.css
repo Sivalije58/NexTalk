@@ -1,0 +1,7 @@
+/* src/index.css */
+@import "tailwindcss";
+/* or, in some setups, they still work:
+   @tailwind base;
+   @tailwind components;
+   @tailwind utilities;
+*/
