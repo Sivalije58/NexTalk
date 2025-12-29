@@ -13,37 +13,34 @@ dotenv.config({ path: '.env', quiet: true });
 const { Pool } = pkg;
 const app = express();
 
-app.use(cors({ origin: "http://localhost:5173" }));
+app.use(cors());
 app.use(express.json());
 
 //// 🔗 PostgreSQL
 const pool = new Pool({
- user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT,
+ connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false 
+  }
 });
 
 
 
 // ✅ Creating tables
 const initDB = async () => {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS messages (
-      id SERIAL PRIMARY KEY,
-      username VARCHAR(255) NOT NULL,
-      content TEXT NOT NULL,
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
-      username VARCHAR(255) UNIQUE NOT NULL
-    );
-  `);
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) NOT NULL,
+        content TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    console.log("Database tables checked/created!");
+  } catch (err) {
+    console.error("Error initializing database:", err);
+  }
 
   
 };
@@ -160,5 +157,7 @@ app.get("/api/users/check/:username", async (req, res) => {
 });
 
 // 🚀 We run the backend (API + WS) on port 5000 ✅
-const PORT = process.env || 5000;
-server.listen(PORT, () => {});
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Server is running on port ${PORT}`);
+});
