@@ -29,6 +29,16 @@ const pool = new Pool({
 // ✅ Creating tables
 const initDB = async () => {
   try {
+      //User table
+     await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    // Creating table for messages
     await pool.query(`
       CREATE TABLE IF NOT EXISTS messages (
         id SERIAL PRIMARY KEY,
@@ -37,12 +47,11 @@ const initDB = async () => {
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);
-    console.log("Database tables checked/created!");
+    
+    console.log("✅ All tables are checked and ready!");
   } catch (err) {
-    console.error("Error initializing database:", err);
+    console.error("❌ Initilization table error:", err);
   }
-
-  
 };
 initDB();
 
