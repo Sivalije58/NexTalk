@@ -16,11 +16,11 @@ function Login({ setUsername }) {
       });
 
       if (!res.ok) {
-        throw new Error("Greška pri prijavi korisnika");
+        throw new Error("User login error.");
       }
 
       const data = await res.json();
-      console.log("✅ Login uspešan:", data);
+      console.log("✅ Login succesful:", data);
 
       // Save your username and go to the chat.
       setUsername(data.username);
