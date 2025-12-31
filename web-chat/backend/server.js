@@ -128,22 +128,32 @@ app.put("/api/messages/:id", async (req, res) => {
   }
 });
 
-// ❌ Delete messages
-app.delete("/api/messages/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    await pool.query("DELETE FROM messages WHERE id = $1", [id]);
 
-    // broadcast delete
+// ❌ Deleting the user and all his messages.
+app.delete("/api/users/:username", async (req, res) => {
+  const { username } = req.params;
+  try {
+    // 1. First, we delete all messages from that user.
+    await pool.query("DELETE FROM messages WHERE username = $1", [username]);
+    
+    // 2. We delete the user.
+    const result = await pool.query("DELETE FROM users WHERE username = $1", [username]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    // 📡 Optional: Send WS to all clients to refresh messages if needed.
     wss.clients.forEach(client => {
       if (client.readyState === 1) {
-        client.send(JSON.stringify({ type: "delete", id }));
+        client.send(JSON.stringify({ type: "user_deleted", username }));
       }
     });
 
-    res.json({ success: true });
-  } catch {
-    res.status(500).json({ error: "Message editing error." });
+    res.json({ success: true, message: `User ${username} and their messages deleted.` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error during account deletion." });
   }
 });
 
