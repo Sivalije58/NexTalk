@@ -20,8 +20,15 @@ NexTalk is a high-performance, real-time chat application. It uses a modern tech
 ## 🚀 How to Run Locally
 
 1. **Clone the project**
-   ```bash
-   git clone [https://github.com/Sivalije58/NexTalk]
+   ``` bash
+   git clone https://github.com/Sivalije58/NexTalk
+   cd NexTalk
+   npm install
+   npm run dev ```
+
+<h2 style="font-size: 32px;"> 🌐 Live Demo </h2>
+Check out the live app here: https://nextalk-chat-3ihi.onrender.com/ 
+   
 
 Login page.
 
@@ -32,7 +39,7 @@ Chat page.
 <img width="485" height="720" alt="chatpage" src="https://github.com/user-attachments/assets/df7bcf49-bcf2-40f7-b63f-8ebc61b6dcbd" />
 
 
-<h2 style="font-size: 32px;"> 🌐 Live Demo </h2>
-Check out the live app here: https://nextalk-chat-3ihi.onrender.com/ 
+
+
 
 
