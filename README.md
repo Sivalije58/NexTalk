@@ -30,8 +30,10 @@ Check out the live app here: https://nextalk-chat-3ihi.onrender.com/
 
 <h2 style="font-size: 45px;"> Images </h2>
 
-👤 Login Page
-<img width="537" height="435" alt="LoginPage" src="https://github.com/user-attachments/assets/586efd8e-0421-422c-a5ba-505851948fc3" />
 
-💬 Chat Page
+<img width="537" height="435" alt="LoginPage" src="https://github.com/user-attachments/assets/586efd8e-0421-422c-a5ba-505851948fc3" />
+👤 Login Page
+
+
 <img width="485" height="720" alt="chatpage" src="https://github.com/user-attachments/assets/df7bcf49-bcf2-40f7-b63f-8ebc61b6dcbd" />
+💬 Chat Page
