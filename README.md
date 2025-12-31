@@ -32,6 +32,7 @@ Chat page.
 <img width="485" height="720" alt="chatpage" src="https://github.com/user-attachments/assets/df7bcf49-bcf2-40f7-b63f-8ebc61b6dcbd" />
 
 
-🌐 Live Demo
+<h2 style="font-size: 32px;"> 🌐 Live Demo </h2>
 Check out the live app here: https://nextalk-chat-3ihi.onrender.com/ 
+
 
