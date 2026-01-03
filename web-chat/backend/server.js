@@ -52,7 +52,8 @@ const initDB = async () => {
 
 
     await pool.query("DROP TABLE IF EXISTS messages CASCADE;");
-
+    //Fix this later. (Server deleting messages and etc, thing.) 3.1.2026. 
+    
     await pool.query(`
       CREATE TABLE IF NOT EXISTS messages (
         id SERIAL PRIMARY KEY,
