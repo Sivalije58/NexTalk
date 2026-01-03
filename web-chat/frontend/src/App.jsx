@@ -281,6 +281,13 @@ function App() {
         }} className="flex-1 py-2 bg-[#444] hover:bg-[#555] rounded">⚠️</button>
         <button onClick={() => setShowConnectModal(true)} className="flex-1 py-2 bg-[#444] hover:bg-[#555] rounded">➕</button>
       </div>
+
+      
+      <div className="w-[300px] flex justify-between mt-1 px-1 text-[10px] text-gray-500 uppercase font-bold">
+        <span className="flex-1 text-center">Delete Account</span>
+        <span className="flex-1 text-center">SOS button (delete all)</span>
+        <span className="flex-1 text-center">Connect button</span>
+      </div>
     </div>
   );
 }
