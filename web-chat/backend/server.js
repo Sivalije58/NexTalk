@@ -52,7 +52,6 @@ const initDB = async () => {
 
 
     await pool.query("DROP TABLE IF EXISTS messages CASCADE;");
-    console.log("🔥 Sve stare poruke su trajno obrisane!");
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS messages (
@@ -144,30 +143,47 @@ app.put("/api/messages/:id", async (req, res) => {
 
 
 // ❌ Deleting the user and all his messages.
-app.delete("/api/users/:username", async (req, res) => {
-  const { username } = req.params;
+// 🔴 DELETE SINGLE MESSAGE
+app.delete("/api/messages/:id", async (req, res) => {
   try {
-    // 1. First, we delete all messages from that user.
-    await pool.query("DELETE FROM messages WHERE username = $1", [username]);
+    const { id } = req.params;
     
-    // 2. We delete the user.
-    const result = await pool.query("DELETE FROM users WHERE username = $1", [username]);
+    const result = await pool.query("DELETE FROM messages WHERE id = $1 RETURNING *", [id]);
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: "User not found." });
+      return res.status(404).json({ error: "Message does not exist." });
     }
 
-    // 📡 Optional: Send WS to all clients to refresh messages if needed.
+    // 📡 Notify all clients via WebSocket that the message was deleted
     wss.clients.forEach(client => {
       if (client.readyState === 1) {
-        client.send(JSON.stringify({ type: "user_deleted", username }));
+        client.send(JSON.stringify({ type: "delete", id: id }));
       }
     });
 
-    res.json({ success: true, message: `User ${username} and their messages deleted.` });
+    res.json({ message: "Message deleted successfully!" });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Error during account deletion." });
+    res.status(500).json({ error: "Error deleting message." });
+  }
+});
+
+// ⚠️ SOS ROUTE (DELETE ALL MESSAGES)
+app.delete("/api/sos", async (req, res) => {
+  try {
+    await pool.query("DELETE FROM messages");
+    
+    // 📡 Notify all clients to clear their chat screens
+    wss.clients.forEach(client => {
+      if (client.readyState === 1) {
+        client.send(JSON.stringify({ type: "delete_all" }));
+      }
+    });
+
+    res.json({ message: "All messages have been deleted." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "SOS error." });
   }
 });
 
