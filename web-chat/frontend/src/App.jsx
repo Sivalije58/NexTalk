@@ -201,16 +201,17 @@ function App() {
 
   // Main Chat UI
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#0f0f0f] text-white font-sans p-4">
-      <h1 className="text-4xl font-black mb-6 tracking-tighter text-blue-500">NexTalk</h1>
+    // 1. Changed main background to bg-white and text to text-gray-900
+    <div className="flex flex-col items-center justify-center min-h-screen bg-white text-gray-900 font-sans p-4">
+      <h1 className="text-4xl font-black mb-6 tracking-tighter text-blue-600">NexTalk</h1>
 
-      {/* 2. Responsive Width: max-w-2xl (approx 670px) for better desktop experience */}
-      <div className="w-full max-w-2xl flex flex-col shadow-2xl rounded-xl overflow-hidden border border-gray-800">
+      {/* 2. Chat container: Changed border color to be visible on white background */}
+      <div className="w-full max-w-2xl flex flex-col shadow-2xl rounded-xl overflow-hidden border border-gray-200">
         
-        {/* Chat Messages Area */}
+        {/* Chat Messages Area - Changed to bg-gray-50 (very light gray) for subtle contrast */}
         <div
           ref={chatBoxRef}
-          className="h-[500px] bg-[#161616] p-4 flex flex-col gap-4 overflow-y-auto"
+          className="h-[500px] bg-gray-50 p-4 flex flex-col gap-4 overflow-y-auto"
           onClick={() => { setSelectedMessageId(null); setEditingMessageId(null); }}
         >
           {messages.map((msg, idx) => {
@@ -221,8 +222,8 @@ function App() {
 
             return (
               <div key={id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
-                {/* 4. Username is now YELLOW and placed above the bubble (WhatsApp style) */}
-                {!isMe && <span className="text-xs font-bold text-yellow-400 mb-1 ml-1 uppercase tracking-wider">{msg.username}</span>}
+                {/* 4. Username: Changed to a darker yellow/orange for better readability on white */}
+                {!isMe && <span className="text-xs font-bold text-orange-600 mb-1 ml-1 uppercase tracking-wider">{msg.username}</span>}
                 
                 <div
                   onClick={(e) => {
@@ -230,9 +231,10 @@ function App() {
                     setSelectedMessageId(isSelected ? null : id);
                     setEditContent(msg.content);
                   }}
+                  // 5. Bubble Colors: "Others" now have a light gray bubble with dark text
                   className={`p-3 rounded-2xl max-w-[85%] break-words relative cursor-pointer transition-all ${
-                    isMe ? "bg-blue-600 text-white rounded-tr-none" : "bg-[#2a2a2a] text-gray-200 rounded-tl-none"
-                  } ${isSelected ? "ring-2 ring-yellow-400 shadow-lg" : ""}`}
+                    isMe ? "bg-blue-600 text-white rounded-tr-none" : "bg-gray-200 text-gray-800 rounded-tl-none"
+                  } ${isSelected ? "ring-2 ring-blue-400 shadow-lg" : ""}`}
                 >
                   {isEditing ? (
                     <div className="flex flex-col gap-2">
@@ -240,20 +242,22 @@ function App() {
                         autoFocus
                         value={editContent} 
                         onChange={(e) => setEditContent(e.target.value)} 
-                        className="w-full bg-[#111] text-white p-2 rounded border border-blue-500 outline-none" 
+                        // Changed input inside bubble to light mode
+                        className="w-full bg-white text-black p-2 rounded border border-blue-500 outline-none" 
                       />
                       <div className="flex gap-2 justify-end">
-                        <button onClick={() => handleUpdate(id)} className="bg-green-500 px-2 py-1 rounded text-xs font-bold uppercase">Save</button>
-                        <button onClick={() => setEditingMessageId(null)} className="bg-gray-500 px-2 py-1 rounded text-xs font-bold uppercase">Cancel</button>
+                        <button onClick={() => handleUpdate(id)} className="bg-green-500 px-2 py-1 rounded text-xs font-bold uppercase text-white">Save</button>
+                        <button onClick={() => setEditingMessageId(null)} className="bg-gray-400 px-2 py-1 rounded text-xs font-bold uppercase text-white">Cancel</button>
                       </div>
                     </div>
                   ) : (
                     <>
                       <span className="text-[15px] leading-relaxed">{msg.content}</span>
                       {isSelected && isMe && (
-                        <div className="absolute -bottom-10 right-0 flex gap-2 bg-[#1f1f1f] p-1 rounded-lg border border-gray-700 z-10 shadow-xl">
-                          <button onClick={(e) => { e.stopPropagation(); setEditingMessageId(id); }} className="hover:bg-yellow-500/20 p-2 rounded text-yellow-500 transition-colors">✏️</button>
-                          <button onClick={(e) => { e.stopPropagation(); handleDelete(id); }} className="hover:bg-red-500/20 p-2 rounded text-red-500 transition-colors">🗑️</button>
+                        // Tooltip background changed to light gray
+                        <div className="absolute -bottom-10 right-0 flex gap-2 bg-white p-1 rounded-lg border border-gray-200 z-10 shadow-xl">
+                          <button onClick={(e) => { e.stopPropagation(); setEditingMessageId(id); }} className="hover:bg-yellow-100 p-2 rounded text-yellow-600 transition-colors">✏️</button>
+                          <button onClick={(e) => { e.stopPropagation(); handleDelete(id); }} className="hover:bg-red-100 p-2 rounded text-red-600 transition-colors">🗑️</button>
                         </div>
                       )}
                     </>
@@ -264,19 +268,20 @@ function App() {
           })}
         </div>
 
-        {/* 3. Input Area - Blue Send Button and dark high-contrast input */}
-        <div className="flex p-3 bg-[#1f1f1f] border-t border-gray-800 gap-2">
+        {/* 3. Input Area - Changed to light gray background */}
+        <div className="flex p-3 bg-gray-100 border-t border-gray-200 gap-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
             placeholder="Write a message..."
-            className="flex-1 p-3 rounded-xl bg-[#0f0f0f] text-white outline-none border border-transparent focus:border-blue-500 transition-all"
+            // Input background is now white with dark text
+            className="flex-1 p-3 rounded-xl bg-white text-black outline-none border border-gray-300 focus:border-blue-500 transition-all"
           />
           <button 
             onClick={sendMessage} 
-            className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-900/20"
+            className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center gap-2 transition-all active:scale-95 shadow-md"
           >
             <span>SEND</span>
             <span>✈️</span>
@@ -284,30 +289,29 @@ function App() {
         </div>
       </div>
 
-      {/* 1. Control Buttons with distinctive colors for better UX */}
+      {/* Control Buttons - Colors kept as requested but text-black for the yellow one */}
       <div className="w-full max-w-2xl flex justify-between mt-6 gap-4">
         <button 
           onClick={() => setShowDeleteConfirm(true)} 
-          className="flex-1 py-3 bg-yellow-600 hover:bg-yellow-500 text-black font-black rounded-xl transition-colors shadow-lg shadow-yellow-900/10"
+          className="flex-1 py-3 bg-yellow-400 hover:bg-yellow-500 text-black font-black rounded-xl transition-colors shadow-md"
         >
           DELETE ACCOUNT
         </button>
         
         <button 
           onClick={async () => {
-             // SOS Button: Wipes all messages and clears the current session
              await fetch("https://nextalk-backend-v4df.onrender.com/api/sos", { method: "DELETE" });
              localStorage.clear();
              window.location.reload();
           }} 
-          className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-black rounded-xl transition-colors shadow-lg shadow-red-900/20"
+          className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-black rounded-xl transition-colors shadow-md"
         >
           ⚠️ SOS (WIPE)
         </button>
 
         <button 
           onClick={() => setShowConnectModal(true)} 
-          className="flex-1 py-3 bg-green-600 hover:bg-green-500 text-white font-black rounded-xl transition-colors shadow-lg shadow-green-900/20"
+          className="flex-1 py-3 bg-green-500 hover:bg-green-600 text-white font-black rounded-xl transition-colors shadow-md"
         >
           CONNECT ➕
         </button>
