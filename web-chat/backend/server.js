@@ -51,7 +51,7 @@ const initDB = async () => {
     console.log("✅ All tables are checked and ready!");
 
 
-    await pool.query("DROP TABLE IF EXISTS messages CASCADE;");
+    //await pool.query("DROP TABLE IF EXISTS messages CASCADE;");
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS messages (
