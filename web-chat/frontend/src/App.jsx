@@ -126,39 +126,35 @@ function App() {
 
   // ✏️ Handle message update
   const handleUpdate = async (id) => {
-    try {
-      const oldMsg = messages.find((msg) => msg.id === id || msg._id === id);
-      if (!oldMsg) return console.error("⚠️ Message not found.");
-
-      const postRes = await fetch(`https://nextalk-backend-v4df.onrender.com/api/messages/${id}`, {
-        method: "PUT",
+     try {
+      const res = await fetch(`https://nextalk-backend-v4df.onrender.com/api/messages/${id}`, {
+        method: "PUT", // Mora biti PUT za izmenu
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: editContent }),
       });
-
-      if (!postRes.ok) throw new Error("Updating message error.");
-      const updatedData = await postRes.json();
+      if (!res.ok) throw new Error("Updating message error.");
+      const updatedData = await res.json();
 
       setMessages((prev) =>
         prev.map((m) => (m.id === id || m._id === id ? { ...m, content: updatedData.content } : m))
       );
-
       setEditingMessageId(null);
       setSelectedMessageId(null);
     } catch (error) {
       console.error("❌ Update error:", error);
-    }
+    } 
   };
 
   // 🔴 Handle message deletion
   const handleDelete = async (id) => {
-    try {
+   try {
       const res = await fetch(`https://nextalk-backend-v4df.onrender.com/api/messages/${id}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Deleting message error.");
 
-      setMessages((prev) => prev.filter((msg) => msg._id !== id && msg.id !== id));
+      // Sklanjamo poruku iz stanja odmah
+      setMessages((prev) => prev.filter((msg) => msg.id !== id && msg._id !== id));
       setSelectedMessageId(null);
     } catch (error) {
       console.error("❌ Deletion error:", error);
