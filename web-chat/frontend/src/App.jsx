@@ -126,16 +126,27 @@ function App() {
 
   // ✏️ Handle message update
   const handleUpdate = async (id) => {
-     try {
-      const res = await fetch(`https://nextalk-backend-v4df.onrender.com/api/messages/${id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Deleting message error.");
+    try {
+      const oldMsg = messages.find((msg) => msg.id === id || msg._id === id);
+      if (!oldMsg) return console.error("⚠️ Message not found.");
 
-      setMessages((prev) => prev.filter((msg) => msg.id !== id && msg._id !== id));
+      const postRes = await fetch(`https://nextalk-backend-v4df.onrender.com/api/messages/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: editContent }),
+      });
+
+      if (!postRes.ok) throw new Error("Updating message error.");
+      const updatedData = await postRes.json();
+
+      setMessages((prev) =>
+        prev.map((m) => (m.id === id || m._id === id ? { ...m, content: updatedData.content } : m))
+      );
+
+      setEditingMessageId(null);
       setSelectedMessageId(null);
     } catch (error) {
-      console.error("❌ Deletion error:", error);
+      console.error("❌ Update error:", error);
     }
   };
 
