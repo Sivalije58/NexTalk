@@ -30,15 +30,30 @@ const pool = new Pool({
 const initDB = async () => {
   try {
       //User table
-     await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(255) UNIQUE NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-    `);
+    //  await pool.query(`
+      // CREATE TABLE IF NOT EXISTS users (
+        // id SERIAL PRIMARY KEY,
+        // username VARCHAR(255) UNIQUE NOT NULL,
+        // created_at TIMESTAMP DEFAULT NOW()
+      // );
+    // `);
 
     // Creating table for messages
+    // await pool.query(`
+      // CREATE TABLE IF NOT EXISTS messages (
+        // id SERIAL PRIMARY KEY,
+        // username VARCHAR(255) NOT NULL,
+        // content TEXT NOT NULL,
+        // created_at TIMESTAMP DEFAULT NOW()
+      // );
+    // `);
+    
+    console.log("✅ All tables are checked and ready!");
+
+
+    await pool.query("DROP TABLE IF EXISTS messages CASCADE;");
+    console.log("🔥 Sve stare poruke su trajno obrisane!");
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS messages (
         id SERIAL PRIMARY KEY,
@@ -47,8 +62,7 @@ const initDB = async () => {
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);
-    
-    console.log("✅ All tables are checked and ready!");
+
   } catch (err) {
     console.error("❌ Initilization table error:", err);
   }
