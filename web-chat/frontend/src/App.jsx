@@ -211,7 +211,7 @@ function App() {
         {/* CHAT MESSAGES AREA - Changed to bg-gray-200 (Grey background for messages) */}
         <div
           ref={chatBoxRef}
-          className="h-[500px] bg-gray-200 p-4 flex flex-col gap-4 overflow-y-auto"
+          className="h-[500px] bg-gray-400 p-4 flex flex-col gap-4 overflow-y-auto"
           onClick={() => { setSelectedMessageId(null); setEditingMessageId(null); }}
         >
           {messages.map((msg, idx) => {
