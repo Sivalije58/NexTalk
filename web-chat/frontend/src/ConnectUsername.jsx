@@ -23,7 +23,7 @@ function ConnectUsername({ onCancel, onConfirm }) {
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Spiderman"
+          placeholder="Type Username: "
           className="w-full p-4 rounded-xl bg-white text-black mb-6 outline-none border border-gray-300 focus:border-blue-500 transition-all shadow-sm"
         />
 
