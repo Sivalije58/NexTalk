@@ -8,7 +8,6 @@ function Login({ setUsername }) {
     if (!name.trim()) return;
 
     try {
-      // 🟢 Send a POST request to the backend to add/return a user.
       const res = await fetch("https://nextalk-backend-v4df.onrender.com/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -20,9 +19,8 @@ function Login({ setUsername }) {
       }
 
       const data = await res.json();
-      console.log("✅ Login succesful:", data);
+      console.log("✅ Login successful:", data);
 
-      // Save your username and go to the chat.
       setUsername(data.username);
     } catch (err) {
       console.error("❌ Error:", err);
@@ -31,26 +29,28 @@ function Login({ setUsername }) {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#121212] text-white">
-      <h1 className="text-3xl font-bold mb-6">NexTalk</h1>
-      <form
-        onSubmit={handleSubmit}
-        className="bg-[#1e1e1e] p-6 rounded-lg shadow-md w-[300px]"
-      >
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Type username: "
-          className="w-full p-2 rounded bg-[#2c2c2c] text-white mb-4 outline-none"
-        />
-        <button
-          type="submit"
-          className="w-full bg-[#444] hover:bg-[#555] p-2 rounded text-white"
-        >
-          Enter
-        </button>
-      </form>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-white text-gray-900 font-sans p-4">
+      <h1 className="text-6xl font-black mb-8 tracking-tighter text-blue-600 italic">NexTalk</h1>
+
+      <div className="bg-gray-100 p-8 rounded-2xl shadow-2xl w-full max-w-[400px] border border-gray-200">
+        <form onSubmit={handleSubmit} className="flex flex-col">
+          <input
+            autoFocus
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Type username: "
+            className="w-full p-4 rounded-xl bg-white text-black mb-6 outline-none border border-gray-300 focus:border-blue-500 transition-all shadow-sm text-lg"
+          />
+
+          <button
+            type="submit"
+            className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl transition-all active:scale-95 shadow-lg flex justify-center items-center text-lg uppercase"
+          >
+            ENTER
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
