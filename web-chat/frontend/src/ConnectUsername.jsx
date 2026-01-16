@@ -10,35 +10,37 @@ function ConnectUsername({ onCancel, onConfirm }) {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#121212] text-white">
-      <h2 className="text-2xl font-bold mb-4">Connect User</h2>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-white text-gray-900 font-sans p-4">
+      <h2 className="text-4xl font-black mb-6 tracking-tighter text-blue-600">Connect User</h2>
 
       <form
         onSubmit={handleSubmit}
-        className="bg-[#1e1e1e] p-6 rounded-lg shadow-md w-[300px]"
+        className="bg-gray-100 p-8 rounded-2xl shadow-2xl w-full max-w-[400px] border border-gray-200"
       >
+        <p className="text-sm font-bold text-gray-500 mb-2 uppercase tracking-widest">Enter existing username</p>
         <input
+          autoFocus
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Username to connect:"
-          className="w-full p-2 rounded bg-[#2c2c2c] text-white mb-4 outline-none"
+          placeholder="e.g. Spiderman"
+          className="w-full p-4 rounded-xl bg-white text-black mb-6 outline-none border border-gray-300 focus:border-blue-500 transition-all shadow-sm"
         />
 
-        <div className="flex gap-4 justify-center">
+        <div className="flex flex-col gap-3">
           <button
             type="submit"
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white"
+            className="w-full py-4 bg-green-500 hover:bg-green-600 text-white font-black rounded-xl transition-all active:scale-95 shadow-md flex justify-center items-center gap-2"
           >
-            ✅ Connect
+            ✅ CONNECT USER
           </button>
 
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded text-white"
+            className="w-full py-4 bg-gray-400 hover:bg-gray-500 text-white font-black rounded-xl transition-all active:scale-95 shadow-md"
           >
-            ❌ Cancel
+            ❌ CANCEL
           </button>
         </div>
       </form>
