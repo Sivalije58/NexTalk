@@ -3,9 +3,11 @@ import Login from "./Login";
 import Chat from "./Chat"; 
 import DeleteAccount from "./DeleteAccount";
 import ConnectUsername from "./ConnectUsername";
+import AvailableUsers from "./AvailableUsers"; // ✅ 1. Import the new component
 
 function App() {
-  // 🧱 State
+  // 🧱 State Management
+  const [showAvailableUsers, setShowAvailableUsers] = useState(false); // ✅ 2. State for user list visibility
   const [showConnectModal, setShowConnectModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [username, setUsername] = useState("");
@@ -26,7 +28,7 @@ function App() {
     }
   }, [messages]);
 
-  // 🔁 Automatic login from localStorage
+  // 🔁 Automatic login using localStorage
   useEffect(() => {
     const savedUser = localStorage.getItem("username");
     if (savedUser) {
@@ -34,25 +36,25 @@ function App() {
     }
   }, []);
 
-  // 🔗 WebSocket connection + Fetch initial messages
+  // 🔗 WebSocket connection + Fetch initial messages from Database
   useEffect(() => {
     if (username) {
-      // Load all messages from the database
+      // Fetch global message history
       fetch("https://nextalk-backend-v4df.onrender.com/api/messages")
         .then((res) => res.json())
         .then((data) => setMessages(data))
         .catch((err) => console.error("❌ Loading messages error:", err));
 
-      // Initialize WebSocket if not already connected
+      // Initialize WebSocket connection
       if (!ws.current) {
         ws.current = new WebSocket("wss://nextalk-backend-v4df.onrender.com");
 
         ws.current.onmessage = (event) => {
           try {
             const msg = JSON.parse(event.data);
-
+            
             if (msg.type === "message") {
-              // Only add the message if it's from another user
+              // Add message if it belongs to another user
               if (msg.data.username !== username) {
                 setMessages((prev) => [...prev, { 
                   id: msg.data.id, 
@@ -62,12 +64,12 @@ function App() {
                 }]);
               }
             } else if (msg.type === "edit") {
-              // Update the specific message content in the list
+              // Handle real-time edits
               setMessages(prev =>
                 prev.map(m => (m.id === msg.data.id || m._id === msg.data.id ? { ...m, content: msg.data.content } : m))
               );
             } else if (msg.type === "delete") {
-              // Remove the deleted message from the list
+              // Handle real-time deletions
               setMessages(prev => prev.filter(m => m.id !== msg.id && m._id !== msg.id));
             }
           } catch (err) {
@@ -76,7 +78,6 @@ function App() {
         };
 
         ws.current.onclose = () => {
-          console.log("WS Disconnected. Reconnecting logic can be added here.");
           ws.current = null;
         };
       }
@@ -87,11 +88,10 @@ function App() {
     };
   }, [username]);
 
-  // ✉️ Send message to API and broadcast via WebSocket
+  // ✉️ Send a new message
   const sendMessage = async () => {
     const text = input.trim();
     if (!text) return;
-
     setInput("");
 
     try {
@@ -101,22 +101,17 @@ function App() {
         body: JSON.stringify({ username, content: text }),
       });
 
-      if (!res.ok) throw new Error("Error sending message to database.");
-
+      if (!res.ok) throw new Error("Error sending message.");
       const data = await res.json();
-      
-      // Update local state immediately
+
+      // Update local state immediately for better UX
       setMessages((prev) => [...prev, { ...data, sender: "user" }]); 
 
-      // Broadcast message to others using JSON format
+      // Broadcast message to other connected clients
       if (ws.current && ws.current.readyState === WebSocket.OPEN) {
         ws.current.send(JSON.stringify({ 
           type: "message", 
-          data: { 
-            id: data.id, 
-            username: data.username, 
-            content: data.content 
-          } 
+          data: { id: data.id, username: data.username, content: data.content } 
         }));
       }
     } catch (err) {
@@ -124,15 +119,14 @@ function App() {
     }
   };
 
-  // ✏️ Handle message update
+  // ✏️ Update an existing message
   const handleUpdate = async (id) => {
      try {
       const res = await fetch(`https://nextalk-backend-v4df.onrender.com/api/messages/${id}`, {
-        method: "PUT", // Mora biti PUT za izmenu
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: editContent }),
       });
-      if (!res.ok) throw new Error("Updating message error.");
       const updatedData = await res.json();
 
       setMessages((prev) =>
@@ -145,14 +139,10 @@ function App() {
     } 
   };
 
-  // 🔴 Handle message deletion
+  // 🔴 Delete a specific message
   const handleDelete = async (id) => {
    try {
-      const res = await fetch(`https://nextalk-backend-v4df.onrender.com/api/messages/${id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Deleting message error.");
-
+      await fetch(`https://nextalk-backend-v4df.onrender.com/api/messages/${id}`, { method: "DELETE" });
       setMessages((prev) => prev.filter((msg) => msg.id !== id && msg._id !== id));
       setSelectedMessageId(null);
     } catch (error) {
@@ -160,7 +150,7 @@ function App() {
     }
   };
 
-  // 👤 Connect existing user
+  // 👤 Switch to or connect an existing user
   const handleConnect = async (name) => {
     try {
       const res = await fetch(`https://nextalk-backend-v4df.onrender.com/api/users/check/${name}`);
@@ -168,18 +158,34 @@ function App() {
         setUsername(name);
         localStorage.setItem("username", name);
       } else {
-        alert("User error or not found.");
+        alert("User not found in the database.");
       }
     } catch (err) {
       console.error(err);
     }
   };
 
-  // Conditional Rendering for Modals
+  // ───────────── MODALS & SCREENS ─────────────
+
+  // ✅ 3. Render Available Users list if triggered
+  if (showAvailableUsers) {
+    return (
+      <AvailableUsers 
+        onCancel={() => setShowAvailableUsers(false)} 
+        onConnect={(name) => { 
+          handleConnect(name); 
+          setShowAvailableUsers(false); 
+        }} 
+      />
+    );
+  }
+
+  // Render the Connect (Switch User) modal
   if (showConnectModal) {
     return <ConnectUsername onCancel={() => setShowConnectModal(false)} onConfirm={(name) => { handleConnect(name); setShowConnectModal(false); }} />;
   }
 
+  // Render the Delete Account confirmation screen
   if (showDeleteConfirm) {
     return (
       <DeleteAccount 
@@ -196,19 +202,17 @@ function App() {
     );
   }
 
-  // If not logged in, show Login screen
+  // If no user is set, show Login screen
   if (!username) return <Login setUsername={(name) => { setUsername(name); localStorage.setItem("username", name); }} />;
 
-  // Main Chat UI
-  // Main Chat UI
+  // ───────────── MAIN CHAT UI ─────────────
   return (
-    // Main background is white
     <div className="flex flex-col items-center justify-center min-h-screen bg-white text-gray-900 font-sans p-4">
-      <h1 className="text-4xl font-black mb-6 tracking-tighter text-blue-600">NexTalk</h1>
+      <h1 className="text-4xl font-black mb-6 tracking-tighter text-blue-600 italic">NexTalk</h1>
 
       <div className="w-full max-w-2xl flex flex-col shadow-2xl rounded-xl overflow-hidden border border-gray-200">
         
-        {/* CHAT MESSAGES AREA - Changed to bg-gray-200 (Grey background for messages) */}
+        {/* Chat Messages Display Area */}
         <div
           ref={chatBoxRef}
           className="h-[500px] bg-gray-400 p-4 flex flex-col gap-4 overflow-y-auto"
@@ -223,14 +227,12 @@ function App() {
             return (
               <div key={id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
                 {!isMe && <span className="text-xs font-bold text-orange-600 mb-1 ml-1 uppercase tracking-wider">{msg.username}</span>}
-                
                 <div
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedMessageId(isSelected ? null : id);
                     setEditContent(msg.content);
                   }}
-                  // Bubbles are white (user) or light-gray (others) to stand out against the grey background
                   className={`p-3 rounded-2xl max-w-[85%] break-words relative cursor-pointer transition-all ${
                     isMe ? "bg-blue-600 text-white rounded-tr-none shadow-md" : "bg-white text-gray-800 rounded-tl-none shadow-sm"
                   } ${isSelected ? "ring-2 ring-blue-400 shadow-lg" : ""}`}
@@ -265,7 +267,7 @@ function App() {
           })}
         </div>
 
-        {/* Input Area */}
+        {/* Message Input Field */}
         <div className="flex p-3 bg-gray-100 border-t border-gray-200 gap-2">
           <input
             type="text"
@@ -275,23 +277,19 @@ function App() {
             placeholder="Write a message..."
             className="flex-1 p-3 rounded-xl bg-white text-black outline-none border border-gray-300 focus:border-blue-500 transition-all"
           />
-          <button 
-            onClick={sendMessage} 
-            className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center gap-2 transition-all active:scale-95 shadow-md"
-          >
-            <span>SEND</span>
-            <span>✈️</span>
+          <button onClick={sendMessage} className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center gap-2 transition-all active:scale-95 shadow-md">
+            <span>SEND ✈️</span>
           </button>
         </div>
       </div>
 
-      {/* Control Buttons */}
-      <div className="w-full max-w-2xl flex justify-between mt-6 gap-4">
+      {/* Navigation & Control Buttons */}
+      <div className="w-full max-w-2xl grid grid-cols-2 mt-6 gap-4">
         <button 
           onClick={() => setShowDeleteConfirm(true)} 
-          className="flex-1 py-3 bg-yellow-400 hover:bg-yellow-500 text-black font-black rounded-xl transition-colors shadow-md"
+          className="py-3 bg-yellow-400 hover:bg-yellow-500 text-black font-black rounded-xl transition-colors shadow-md uppercase"
         >
-          DELETE ACCOUNT
+          Delete Account
         </button>
         
         <button 
@@ -300,16 +298,24 @@ function App() {
              localStorage.clear();
              window.location.reload();
           }} 
-          className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-black rounded-xl transition-colors shadow-md"
+          className="py-3 bg-red-500 hover:bg-red-600 text-white font-black rounded-xl transition-colors shadow-md uppercase"
         >
           ⚠️ SOS (WIPE)
         </button>
 
         <button 
           onClick={() => setShowConnectModal(true)} 
-          className="flex-1 py-3 bg-green-500 hover:bg-green-600 text-white font-black rounded-xl transition-colors shadow-md"
+          className="py-3 bg-green-500 hover:bg-green-600 text-white font-black rounded-xl transition-colors shadow-md uppercase"
         >
-          CONNECT ➕
+          Connect ➕
+        </button>
+
+        {/* ✅ 4. Trigger for Available Users list */}
+        <button 
+          onClick={() => setShowAvailableUsers(true)} 
+          className="py-3 bg-blue-500 hover:bg-blue-600 text-white font-black rounded-xl transition-colors shadow-md uppercase"
+        >
+          📶 Available
         </button>
       </div>
     </div>
