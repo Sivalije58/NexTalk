@@ -3,7 +3,7 @@ import Login from "./Login";
 import Chat from "./Chat"; 
 import DeleteAccount from "./DeleteAccount";
 import ConnectUsername from "./ConnectUsername";
-import AvailableUsers from "./AvailableUsers"; // ✅ 1. Import the new component
+import AvaliableUsers from "./AvaliableUsers"; // ✅ 1. Import the new component
 
 function App() {
   // 🧱 State Management
