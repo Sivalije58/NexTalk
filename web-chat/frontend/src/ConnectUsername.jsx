@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-function ConnectUsername({ onCancel, onConfirm }) {
+function ConnectUsername({ onCancel, onConfirm, onShowAvailable }) { 
   const [name, setName] = useState("");
 
   const handleSubmit = (e) => {
@@ -43,16 +43,13 @@ function ConnectUsername({ onCancel, onConfirm }) {
             ❌ CANCEL
           </button>
 
-
           <button
             type="button"
-            onClick={() => {}} 
+            onClick={onShowAvailable} 
             className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl transition-all active:scale-95 shadow-md flex justify-center items-center gap-2"
           >
             📶 AVAILABLE USERS
           </button>
-
-
         </div>
       </form>
     </div>
