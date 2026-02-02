@@ -146,7 +146,7 @@ function App() {
   // 1. First check if we should show the Available Users list
   if (showAvailableUsers) {
     return (
-      <AvailableUsers 
+      <AvaliableUsers 
         onBackToConnect={() => {
           setShowAvailableUsers(false);
           setShowConnectModal(true);
