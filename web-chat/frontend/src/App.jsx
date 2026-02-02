@@ -142,7 +142,7 @@ function App() {
   };
 
   // ───────────── MODALS & SCREENS ─────────────
-
+  // 
   // 1. First check if we should show the Available Users list
   if (showAvailableUsers) {
     return (
