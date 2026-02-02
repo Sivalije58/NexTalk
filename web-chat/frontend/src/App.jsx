@@ -3,7 +3,7 @@ import Login from "./Login";
 import Chat from "./Chat"; 
 import DeleteAccount from "./DeleteAccount";
 import ConnectUsername from "./ConnectUsername";
-import AvaliableUsers from "./AvaliableUsers";
+import AvaliableUsers from "./AvaliableUsers"; 
 
 function App() {
   // 🧱 State Management
@@ -143,7 +143,7 @@ function App() {
 
   // ───────────── MODALS & SCREENS ─────────────
 
-  // ✅ 1. Available Users Screen
+  // 1. First check if we should show the Available Users list
   if (showAvailableUsers) {
     return (
       <AvailableUsers 
@@ -159,7 +159,7 @@ function App() {
     );
   }
 
-  // ✅ 2. Connect (Switch) Modal
+  // 2. Then check if we should show the Connect (Switch) Modal
   if (showConnectModal) {
     return (
       <ConnectUsername 
@@ -176,7 +176,7 @@ function App() {
     );
   }
 
-  // ✅ 3. Delete Account Screen
+  // 3. Then check for Delete confirmation
   if (showDeleteConfirm) {
     return (
       <DeleteAccount 
@@ -193,8 +193,10 @@ function App() {
     );
   }
 
-  // ✅ 4. Login Screen
-  if (!username) return <Login setUsername={(name) => { setUsername(name); localStorage.setItem("username", name); }} />;
+  // 4. ONLY IF NONE OF THE ABOVE, check if user is logged in
+  if (!username) {
+    return <Login setUsername={(name) => { setUsername(name); localStorage.setItem("username", name); }} />;
+  }
 
   // ───────────── MAIN CHAT UI ─────────────
   return (
