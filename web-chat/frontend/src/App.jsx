@@ -3,7 +3,7 @@ import Login from "./Login";
 import Chat from "./Chat"; 
 import DeleteAccount from "./DeleteAccount";
 import ConnectUsername from "./ConnectUsername";
-import AvailableUsers from "./AvailableUsers"; // ✅ Corrected spelling
+import AvaliableUsers from "./AvaliableUsers";
 
 function App() {
   // 🧱 State Management
