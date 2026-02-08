@@ -1,141 +1,89 @@
-import express from "express";
-import cors from "cors";
-import pkg from "pg";
-import http from "http";
-import { WebSocketServer } from "ws";
-import dotenv from "dotenv";
+const express = require("express");
+const http = require("http");
+const { Pool } = require("pg");
+const cors = require("cors");
+const { Server } = require("ws");
 
-dotenv.config({ path: '.env', quiet: true });
-
-const { Pool } = pkg;
 const app = express();
+const server = http.createServer(app);
+const wss = new Server({ server });
 
 app.use(cors());
 app.use(express.json());
 
-//// 🔗 PostgreSQL Connection
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false 
-  }
+  connectionString: process.env.DATABASE_URL, 
+  ssl: { rejectUnauthorized: false },
 });
 
-// ✅ Database Initialization (Automatic table creation)
-const initDB = async () => {
+// 1. RUTE for joining (JOIN)
+app.post("/api/rooms/join", async (req, res) => {
+  const { user1, user2, room_id } = req.body;
   try {
-    // Users table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(255) UNIQUE NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW()
+    // We check if the room exists.
+    const existing = await pool.query("SELECT * FROM active_chats WHERE room_id = $1", [room_id]);
+    if (existing.rows.length === 0) {
+      const newUser = await pool.query(
+        "INSERT INTO active_chats (user1, user2, room_id) VALUES ($1, $2, $3) RETURNING *",
+        [user1, user2, room_id]
       );
-    `);
-
-    // Messages table (Includes DROP option for reset logic)
-    await pool.query("DROP TABLE IF EXISTS messages CASCADE;"); 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS messages (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(255) NOT NULL,
-        content TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-    `);
-    
-    console.log("✅ All tables are ready!");
+      res.json(newUser.rows[0]);
+    } else {
+      res.json(existing.rows[0]);
+    }
   } catch (err) {
-    console.error("❌ Database initialization error:", err);
-  }
-};
-initDB();
-
-// HTTP + WS server setup
-const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
-
-wss.on("connection", (ws) => {
-  console.log("🟢 New user connected!");
-  ws.on("close", () => console.log("🔴 User disconnected!"));
-});
-
-// ───────────── API ROUTES ─────────────
-
-// 🟢 GET all users (Required for Available Users list)
-app.get("/api/users", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT username FROM users ORDER BY username ASC");
-    res.json(result.rows);
-  } catch (err) {
-    console.error("Error fetching users:", err);
-    res.status(500).json({ error: "Internal server error." });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// 🟢 GET all messages
-app.get("/api/messages", async (req, res) => {
+// 2. Root for leaving (LEAVE)
+app.post("/api/rooms/leave", async (req, res) => {
+  const { room_id } = req.body;
   try {
-    const result = await pool.query("SELECT * FROM messages ORDER BY created_at ASC");
-    res.json(result.rows);
+    await pool.query("DELETE FROM active_chats WHERE room_id = $1", [room_id]);
+    res.json({ message: "Soba obrisana, veza prekinuta." });
   } catch (err) {
-    res.status(500).json({ error: "Error loading messages." });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// 🟢 POST new message + Real-time broadcast
-app.post("/api/messages", async (req, res) => {
+// 3. Message Routes (Filtered by room_id)
+app.get("/api/messages/:room_id", async (req, res) => {
   try {
-    const { username, content } = req.body;
     const result = await pool.query(
-      "INSERT INTO messages (username, content) VALUES ($1, $2) RETURNING *",
-      [username, content]
+      "SELECT * FROM messages WHERE room_id = $1 ORDER BY created_at ASC",
+      [req.params.room_id]
     );
-
-    const newMessage = result.rows[0];
-
-    wss.clients.forEach(client => {
-      if (client.readyState === 1) {
-        client.send(JSON.stringify({ type: "message", data: newMessage }));
-      }
-    });
-
-    res.status(201).json(newMessage);
+    res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: "Error saving message." });
+    res.status(500).json(err);
   }
 });
 
-// ✅ User Login (Saves/Ensures user exists in the database)
-app.post("/api/login", async (req, res) => {
-  const { username } = req.body;
-  if (!username) return res.status(400).json({ error: "Username not found." });
-
+app.post("/api/messages", async (req, res) => {
+  const { username, content, room_id } = req.body;
   try {
-    await pool.query("INSERT INTO users (username) VALUES ($1) ON CONFLICT (username) DO NOTHING", [username]);
-    res.json({ success: true, username });
+    const result = await pool.query(
+      "INSERT INTO messages (username, content, room_id) VALUES ($1, $2, $3) RETURNING *",
+      [username, content, room_id]
+    );
+    // Notification for everyone through WebSocket.
+    wss.clients.forEach((client) => {
+      client.send(JSON.stringify({ type: "message", data: result.rows[0] }));
+    });
+    res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: "Login error." });
+    res.status(500).json(err);
   }
 });
 
-// ❌ SOS: Delete all messages
+// SOS button
 app.delete("/api/sos", async (req, res) => {
-  try {
-    await pool.query("DELETE FROM messages");
-    wss.clients.forEach(client => {
-      if (client.readyState === 1) {
-        client.send(JSON.stringify({ type: "delete_all" }));
-      }
-    });
-    res.json({ message: "All messages deleted." });
-  } catch (err) {
-    res.status(500).json({ error: "SOS error." });
-  }
+  await pool.query("DELETE FROM messages");
+  await pool.query("DELETE FROM active_chats");
+  wss.clients.forEach(client => client.send(JSON.stringify({ type: "delete_all" })));
+  res.json({ message: "Sve obrisano" });
 });
 
-// 🚀 Start server
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
-});
+server.listen(PORT, () => console.log(`Server works on port: ${PORT}`));
