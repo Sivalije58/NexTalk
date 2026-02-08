@@ -86,3 +86,5 @@ app.delete("/api/sos", async (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`Server radi na portu ${PORT}`));
+
+//server.js
