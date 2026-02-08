@@ -4,6 +4,7 @@ import Chat from "./Chat";
 import DeleteAccount from "./DeleteAccount";
 import ConnectUsername from "./ConnectUsername";
 import AvaliableUsers from "./AvaliableUsers";
+import ConnectionOneWithOne from "./ConnectionOneWithOne"; // ✅ Imported new component
 
 function App() {
   // 🧱 State Management
@@ -13,6 +14,9 @@ function App() {
   const [username, setUsername] = useState("");
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+
+  // 1v1 Chat State
+  const [chatPartner, setChatPartner] = useState(null); // ✅ Tracking 1v1 partner
 
   const [selectedMessageId, setSelectedMessageId] = useState(null);
   const [editingMessageId, setEditingMessageId] = useState(null);
@@ -36,9 +40,9 @@ function App() {
     }
   }, []);
 
-  // 🔗 WebSocket connection + Fetch initial messages
+  // 🔗 WebSocket connection + Fetch initial messages (Global Chat)
   useEffect(() => {
-    if (username) {
+    if (username && !chatPartner) { // Only fetch global messages if NOT in 1v1
       fetch("https://nextalk-backend-v4df.onrender.com/api/messages")
         .then((res) => res.json())
         .then((data) => setMessages(data))
@@ -70,9 +74,9 @@ function App() {
       }
     }
     return () => { if (ws.current) ws.current.close(); };
-  }, [username]);
+  }, [username, chatPartner]);
 
-  // ✉️ Send a new message
+  // ✉️ Send a new message (Global Chat)
   const sendMessage = async () => {
     const text = input.trim();
     if (!text) return;
@@ -146,13 +150,13 @@ function App() {
   // ✅ 1. Available Users Screen
   if (showAvailableUsers) {
     return (
-      <AvailableUsers 
+      <AvaliableUsers 
         onBackToConnect={() => {
           setShowAvailableUsers(false);
           setShowConnectModal(true);
         }}
         onConnect={(name) => { 
-          handleConnect(name); 
+          setChatPartner(name); // ✅ Trigger 1v1 chat mode
           setShowAvailableUsers(false); 
         }} 
       />
@@ -195,6 +199,18 @@ function App() {
 
   // ✅ 4. Login Screen
   if (!username) return <Login setUsername={(name) => { setUsername(name); localStorage.setItem("username", name); }} />;
+
+  // ✅ 5. 🔄 1v1 PRIVATE CHAT SWITCH
+  if (chatPartner) {
+    return (
+      <ConnectionOneWithOne 
+        myName={username} 
+        otherUser={chatPartner} 
+        roomId={[username, chatPartner].sort().join("-")} // Generates unique ID
+        onExit={() => setChatPartner(null)} 
+      />
+    );
+  }
 
   // ───────────── MAIN CHAT UI ─────────────
   return (
