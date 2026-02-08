@@ -1,8 +1,9 @@
-const express = require("express");
-const http = require("http");
-const { Pool } = require("pg");
-const cors = require("cors");
-const { Server } = require("ws");
+import express from "express";
+import http from "http";
+import pg from "pg";
+const { Pool } = pg;
+import cors from "cors";
+import { Server } from "ws";
 
 const app = express();
 const server = http.createServer(app);
@@ -16,11 +17,10 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 });
 
-// 1. RUTE for joining (JOIN)
+// 1. ROOT FOR JOINING (JOIN)
 app.post("/api/rooms/join", async (req, res) => {
   const { user1, user2, room_id } = req.body;
   try {
-    // We check if the room exists.
     const existing = await pool.query("SELECT * FROM active_chats WHERE room_id = $1", [room_id]);
     if (existing.rows.length === 0) {
       const newUser = await pool.query(
@@ -36,7 +36,7 @@ app.post("/api/rooms/join", async (req, res) => {
   }
 });
 
-// 2. Root for leaving (LEAVE)
+// 2. ROOT FOR LEAVING (LEAVE)
 app.post("/api/rooms/leave", async (req, res) => {
   const { room_id } = req.body;
   try {
@@ -47,7 +47,7 @@ app.post("/api/rooms/leave", async (req, res) => {
   }
 });
 
-// 3. Message Routes (Filtered by room_id)
+// 3. MESSAGE ROUTES (Filtered by room_id)
 app.get("/api/messages/:room_id", async (req, res) => {
   try {
     const result = await pool.query(
@@ -67,7 +67,6 @@ app.post("/api/messages", async (req, res) => {
       "INSERT INTO messages (username, content, room_id) VALUES ($1, $2, $3) RETURNING *",
       [username, content, room_id]
     );
-    // Notification for everyone through WebSocket.
     wss.clients.forEach((client) => {
       client.send(JSON.stringify({ type: "message", data: result.rows[0] }));
     });
@@ -82,8 +81,8 @@ app.delete("/api/sos", async (req, res) => {
   await pool.query("DELETE FROM messages");
   await pool.query("DELETE FROM active_chats");
   wss.clients.forEach(client => client.send(JSON.stringify({ type: "delete_all" })));
-  res.json({ message: "Sve obrisano" });
+  res.json({ message: "Everything is deleted." });
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Server works on port: ${PORT}`));
+server.listen(PORT, () => console.log(`Server radi na portu ${PORT}`));
