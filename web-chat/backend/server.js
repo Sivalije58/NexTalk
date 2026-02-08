@@ -3,11 +3,13 @@ import http from "http";
 import pg from "pg";
 const { Pool } = pg;
 import cors from "cors";
-import { Server } from "ws";
+import { WebSocketServer } from "ws"; // ✅ Popravljeno: koristimo WebSocketServer umesto Server
 
 const app = express();
 const server = http.createServer(app);
-const wss = new Server({ server });
+
+// ✅ Popravljeno: Inicijalizacija WebSocket servera
+const wss = new WebSocketServer({ server });
 
 app.use(cors());
 app.use(express.json());
@@ -17,7 +19,9 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 });
 
-// 1. ROOT FOR JOINING (JOIN)
+// ───────────── API ROUTES (1:1 CHAT) ─────────────
+
+// 1. RUTA ZA SPAJANJE (JOIN)
 app.post("/api/rooms/join", async (req, res) => {
   const { user1, user2, room_id } = req.body;
   try {
@@ -36,7 +40,7 @@ app.post("/api/rooms/join", async (req, res) => {
   }
 });
 
-// 2. ROOT FOR LEAVING (LEAVE)
+// 2. RUTA ZA IZLAZAK (LEAVE)
 app.post("/api/rooms/leave", async (req, res) => {
   const { room_id } = req.body;
   try {
@@ -47,7 +51,7 @@ app.post("/api/rooms/leave", async (req, res) => {
   }
 });
 
-// 3. MESSAGE ROUTES (Filtered by room_id)
+// 3. PORUKE (Filtrirane po room_id)
 app.get("/api/messages/:room_id", async (req, res) => {
   try {
     const result = await pool.query(
@@ -56,7 +60,7 @@ app.get("/api/messages/:room_id", async (req, res) => {
     );
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json(err);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -67,24 +71,38 @@ app.post("/api/messages", async (req, res) => {
       "INSERT INTO messages (username, content, room_id) VALUES ($1, $2, $3) RETURNING *",
       [username, content, room_id]
     );
+    
+    // Slanje svim konektovanim klijentima preko WebSocketa
     wss.clients.forEach((client) => {
-      client.send(JSON.stringify({ type: "message", data: result.rows[0] }));
+      if (client.readyState === 1) { // 1 znači OPEN
+        client.send(JSON.stringify({ type: "message", data: result.rows[0] }));
+      }
     });
+    
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json(err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-// SOS button
+// SOS: Briše sve
 app.delete("/api/sos", async (req, res) => {
-  await pool.query("DELETE FROM messages");
-  await pool.query("DELETE FROM active_chats");
-  wss.clients.forEach(client => client.send(JSON.stringify({ type: "delete_all" })));
-  res.json({ message: "Everything is deleted." });
+  try {
+    await pool.query("DELETE FROM messages");
+    await pool.query("DELETE FROM active_chats");
+    wss.clients.forEach(client => {
+      if (client.readyState === 1) {
+        client.send(JSON.stringify({ type: "delete_all" }));
+      }
+    });
+    res.json({ message: "Sve obrisano" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
+// 🚀 START SERVER
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Server radi na portu ${PORT}`));
-
-//server.js
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Server radi na portu ${PORT}`);
+});
