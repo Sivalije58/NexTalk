@@ -50,23 +50,33 @@ app.get("/api/users", async (req, res) => {
 
 // ───────────── API ROUTES (CHAT CORE: CRUD) ─────────────
 
-// 1. DOBIJANJE PORUKA (Globalno ili po sobi)
-app.get("/api/messages/:room_id?", async (req, res) => {
-  const { room_id } = req.params;
+// 1. DOBIJANJE GLOBALNIH PORUKA (Glavni chat)
+app.get("/api/messages", async (req, res) => {
   try {
-    let result;
-    if (room_id) {
-      result = await pool.query("SELECT * FROM messages WHERE room_id = $1 ORDER BY created_at ASC", [room_id]);
-    } else {
-      result = await pool.query("SELECT * FROM messages WHERE room_id IS NULL ORDER BY created_at ASC");
-    }
+    const result = await pool.query(
+      "SELECT * FROM messages WHERE room_id IS NULL ORDER BY created_at ASC"
+    );
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 2. SLANJE PORUKE
+// 2. DOBIJANJE PRIVATNIH PORUKA (Po room_id)
+app.get("/api/messages/:room_id", async (req, res) => {
+  const { room_id } = req.params;
+  try {
+    const result = await pool.query(
+      "SELECT * FROM messages WHERE room_id = $1 ORDER BY created_at ASC", 
+      [room_id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3. SLANJE PORUKE
 app.post("/api/messages", async (req, res) => {
   const { username, content, room_id } = req.body;
   try {
@@ -87,7 +97,7 @@ app.post("/api/messages", async (req, res) => {
   }
 });
 
-// 3. ✏️ UPDATE PORUKE (IZMENA)
+// 4. ✏️ UPDATE PORUKE (IZMENA)
 app.put("/api/messages/:id", async (req, res) => {
   const { id } = req.params;
   const { content } = req.body;
@@ -98,7 +108,6 @@ app.put("/api/messages/:id", async (req, res) => {
     );
     const updatedMsg = result.rows[0];
 
-    // Obavesti sve klijente o izmeni
     wss.clients.forEach(client => {
       if (client.readyState === 1) {
         client.send(JSON.stringify({ type: "edit", data: updatedMsg }));
@@ -111,13 +120,12 @@ app.put("/api/messages/:id", async (req, res) => {
   }
 });
 
-// 4. 🗑️ DELETE PORUKE (BRISANJE)
+// 5. 🗑️ DELETE PORUKE (BRISANJE)
 app.delete("/api/messages/:id", async (req, res) => {
   const { id } = req.params;
   try {
     await pool.query("DELETE FROM messages WHERE id = $1", [id]);
 
-    // Obavesti sve klijente o brisanju
     wss.clients.forEach(client => {
       if (client.readyState === 1) {
         client.send(JSON.stringify({ type: "delete", id: id }));
