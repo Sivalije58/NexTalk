@@ -21,13 +21,12 @@ const pool = new Pool({
 
 // ───────────── API ROUTES (AUTH & USERS) ─────────────
 
-// ✅ NOVA LOGIN RUTA (VRAĆENA)
+// ✅ LOGIN RUTA
 app.post("/api/login", async (req, res) => {
   const { username } = req.body;
   if (!username) return res.status(400).json({ error: "Username not found." });
 
   try {
-    // Proverava da li korisnik postoji, ako ne, pravi ga u bazi
     await pool.query(
       "INSERT INTO users (username) VALUES ($1) ON CONFLICT (username) DO NOTHING", 
       [username]
@@ -39,7 +38,7 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// RUTA ZA DOBIJANJE LISTE SVIH KORISNIKA
+// LISTA KORISNIKA
 app.get("/api/users", async (req, res) => {
   try {
     const result = await pool.query("SELECT username FROM users ORDER BY username ASC");
@@ -49,9 +48,90 @@ app.get("/api/users", async (req, res) => {
   }
 });
 
-// ───────────── API ROUTES (1:1 CHAT) ─────────────
+// ───────────── API ROUTES (CHAT CORE: CRUD) ─────────────
 
-// 1. RUTA ZA SPAJANJE (JOIN)
+// 1. DOBIJANJE PORUKA (Globalno ili po sobi)
+app.get("/api/messages/:room_id?", async (req, res) => {
+  const { room_id } = req.params;
+  try {
+    let result;
+    if (room_id) {
+      result = await pool.query("SELECT * FROM messages WHERE room_id = $1 ORDER BY created_at ASC", [room_id]);
+    } else {
+      result = await pool.query("SELECT * FROM messages WHERE room_id IS NULL ORDER BY created_at ASC");
+    }
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2. SLANJE PORUKE
+app.post("/api/messages", async (req, res) => {
+  const { username, content, room_id } = req.body;
+  try {
+    const result = await pool.query(
+      "INSERT INTO messages (username, content, room_id) VALUES ($1, $2, $3) RETURNING *",
+      [username, content, room_id || null]
+    );
+    
+    wss.clients.forEach((client) => {
+      if (client.readyState === 1) {
+        client.send(JSON.stringify({ type: "message", data: result.rows[0] }));
+      }
+    });
+    
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3. ✏️ UPDATE PORUKE (IZMENA)
+app.put("/api/messages/:id", async (req, res) => {
+  const { id } = req.params;
+  const { content } = req.body;
+  try {
+    const result = await pool.query(
+      "UPDATE messages SET content = $1 WHERE id = $2 RETURNING *",
+      [content, id]
+    );
+    const updatedMsg = result.rows[0];
+
+    // Obavesti sve klijente o izmeni
+    wss.clients.forEach(client => {
+      if (client.readyState === 1) {
+        client.send(JSON.stringify({ type: "edit", data: updatedMsg }));
+      }
+    });
+
+    res.json(updatedMsg);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 4. 🗑️ DELETE PORUKE (BRISANJE)
+app.delete("/api/messages/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query("DELETE FROM messages WHERE id = $1", [id]);
+
+    // Obavesti sve klijente o brisanju
+    wss.clients.forEach(client => {
+      if (client.readyState === 1) {
+        client.send(JSON.stringify({ type: "delete", id: id }));
+      }
+    });
+
+    res.json({ message: "Poruka obrisana" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ───────────── API ROUTES (1:1 ROOMS) ─────────────
+
 app.post("/api/rooms/join", async (req, res) => {
   const { user1, user2, room_id } = req.body;
   try {
@@ -70,46 +150,11 @@ app.post("/api/rooms/join", async (req, res) => {
   }
 });
 
-// 2. RUTA ZA IZLAZAK (LEAVE)
 app.post("/api/rooms/leave", async (req, res) => {
   const { room_id } = req.body;
   try {
     await pool.query("DELETE FROM active_chats WHERE room_id = $1", [room_id]);
-    res.json({ message: "Soba obrisana, veza prekinuta." });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 3. PORUKE (Filtrirane po room_id)
-app.get("/api/messages/:room_id", async (req, res) => {
-  try {
-    const result = await pool.query(
-      "SELECT * FROM messages WHERE room_id = $1 ORDER BY created_at ASC",
-      [req.params.room_id]
-    );
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// SLANJE PORUKE
-app.post("/api/messages", async (req, res) => {
-  const { username, content, room_id } = req.body;
-  try {
-    const result = await pool.query(
-      "INSERT INTO messages (username, content, room_id) VALUES ($1, $2, $3) RETURNING *",
-      [username, content, room_id]
-    );
-    
-    wss.clients.forEach((client) => {
-      if (client.readyState === 1) {
-        client.send(JSON.stringify({ type: "message", data: result.rows[0] }));
-      }
-    });
-    
-    res.json(result.rows[0]);
+    res.json({ message: "Soba obrisana" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -117,7 +162,6 @@ app.post("/api/messages", async (req, res) => {
 
 // ───────────── SYSTEM ROUTES ─────────────
 
-// SOS: Briše sve poruke i sesije
 app.delete("/api/sos", async (req, res) => {
   try {
     await pool.query("DELETE FROM messages");
