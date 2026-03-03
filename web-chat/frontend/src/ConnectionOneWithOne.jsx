@@ -58,7 +58,7 @@ function ConnectionOneWithOne({ myName, otherUser, roomId, onExit }) {
     return () => { if (ws.current) ws.current.close(); };
   }, [roomId, myName, otherUser]);
 
-  // CRUD FUNKCIJE
+  // CRUD FUNCTIONS
   const sendMessage = async () => {
     if (!input.trim()) return;
     const text = input;
