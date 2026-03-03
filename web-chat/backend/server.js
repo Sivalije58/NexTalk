@@ -38,7 +38,7 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// LISTA KORISNIKA
+// User lists
 app.get("/api/users", async (req, res) => {
   try {
     const result = await pool.query("SELECT username FROM users ORDER BY username ASC");
@@ -50,7 +50,7 @@ app.get("/api/users", async (req, res) => {
 
 // ───────────── API ROUTES (CHAT CORE: CRUD) ─────────────
 
-// 1. DOBIJANJE GLOBALNIH PORUKA (Glavni chat)
+// 1. Getting global chats (Main chat)
 app.get("/api/messages", async (req, res) => {
   try {
     const result = await pool.query(
@@ -62,7 +62,7 @@ app.get("/api/messages", async (req, res) => {
   }
 });
 
-// 2. DOBIJANJE PRIVATNIH PORUKA (Po room_id)
+// 2. Getting private message (Through room_id)
 app.get("/api/messages/:room_id", async (req, res) => {
   const { room_id } = req.params;
   try {
@@ -76,7 +76,7 @@ app.get("/api/messages/:room_id", async (req, res) => {
   }
 });
 
-// 3. SLANJE PORUKE
+// 3. Sending messages
 app.post("/api/messages", async (req, res) => {
   const { username, content, room_id } = req.body;
   try {
@@ -97,7 +97,7 @@ app.post("/api/messages", async (req, res) => {
   }
 });
 
-// 4. ✏️ UPDATE PORUKE (IZMENA)
+// 4. ✏️ UPDATE message (Update)
 app.put("/api/messages/:id", async (req, res) => {
   const { id } = req.params;
   const { content } = req.body;
@@ -120,7 +120,7 @@ app.put("/api/messages/:id", async (req, res) => {
   }
 });
 
-// 5. 🗑️ DELETE PORUKE (BRISANJE)
+// 5. 🗑️ DELETE message (deletion)
 app.delete("/api/messages/:id", async (req, res) => {
   const { id } = req.params;
   try {
@@ -132,7 +132,7 @@ app.delete("/api/messages/:id", async (req, res) => {
       }
     });
 
-    res.json({ message: "Poruka obrisana" });
+    res.json({ message: "Message deleted." });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -162,7 +162,7 @@ app.post("/api/rooms/leave", async (req, res) => {
   const { room_id } = req.body;
   try {
     await pool.query("DELETE FROM active_chats WHERE room_id = $1", [room_id]);
-    res.json({ message: "Soba obrisana" });
+    res.json({ message: "Room deleted." });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -179,7 +179,7 @@ app.delete("/api/sos", async (req, res) => {
         client.send(JSON.stringify({ type: "delete_all" }));
       }
     });
-    res.json({ message: "Sve obrisano" });
+    res.json({ message: "Everything deleted." });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -188,5 +188,5 @@ app.delete("/api/sos", async (req, res) => {
 // 🚀 START SERVER
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Server radi na portu ${PORT}`);
+  console.log(`🚀 Server works on port ${PORT}`);
 });
