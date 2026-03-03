@@ -28,7 +28,7 @@ router.get("/", async (req, res) => {
 // POST /api/messages
 router.post("/", async (req, res) => {
 
- // console.log("POST /api/messages body:", req.body); // <-- Ovdje dodaj
+ // console.log("POST /api/messages body:", req.body); 
 
 
   const { username, content } = req.body;
