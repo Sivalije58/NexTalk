@@ -78,7 +78,7 @@ function Chat({ username }) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          placeholder="Unesi poruku..."
+          placeholder="Send the message..."
           className="flex-1 p-2 rounded-l bg-[#2c2c2c] text-white outline-none"
         />
         <button
