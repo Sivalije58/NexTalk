@@ -58,10 +58,10 @@ app.get("/api/messages", async (req, res) => {
     );
     res.json(result.rows);
   } catch (err) {
+    console.error(err); 
     res.status(500).json({ error: err.message });
   }
 });
-
 // 2. Private chat with  LIMIT-om (Old route changed)
 app.get("/api/messages/:room_id", async (req, res) => {
   const { room_id } = req.params;
