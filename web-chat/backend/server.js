@@ -58,11 +58,12 @@ app.get("/api/messages", async (req, res) => {
     );
     res.json(result.rows);
   } catch (err) {
-    console.error(err); 
+    console.error("Global messages error:", err); 
     res.status(500).json({ error: err.message });
   }
 });
-// 2. Private chat with  LIMIT (Old route changed)
+
+// 2. Private chat with LIMIT
 app.get("/api/messages/:room_id", async (req, res) => {
   const { room_id } = req.params; 
   const limit = 20;
@@ -74,7 +75,7 @@ app.get("/api/messages/:room_id", async (req, res) => {
     );
     res.json(result.rows);
   } catch (err) {
-    console.error(err);
+    console.error("Private messages error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -100,22 +101,28 @@ app.post("/api/messages", async (req, res) => {
   }
 });
 
-// 4. Update and 5. Delete stay the same as before...
+// 4. UPDATE message
 app.put("/api/messages/:id", async (req, res) => {
   const { id } = req.params;
   const { content } = req.body;
   try {
     const result = await pool.query("UPDATE messages SET content = $1 WHERE id = $2 RETURNING *", [content, id]);
-    wss.clients.forEach(client => { if (client.readyState === 1) client.send(JSON.stringify({ type: "edit", data: result.rows[0] })); });
-    res.json(result.rows[0]);
+    const updatedMsg = result.rows[0];
+    wss.clients.forEach(client => { 
+      if (client.readyState === 1) client.send(JSON.stringify({ type: "edit", data: updatedMsg })); 
+    });
+    res.json(updatedMsg);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// 5. DELETE message
 app.delete("/api/messages/:id", async (req, res) => {
   const { id } = req.params;
   try {
     await pool.query("DELETE FROM messages WHERE id = $1", [id]);
-    wss.clients.forEach(client => { if (client.readyState === 1) client.send(JSON.stringify({ type: "delete", id })); });
+    wss.clients.forEach(client => { 
+      if (client.readyState === 1) client.send(JSON.stringify({ type: "delete", id })); 
+    });
     res.json({ message: "Deleted" });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -145,9 +152,15 @@ app.delete("/api/sos", async (req, res) => {
   try {
     await pool.query("DELETE FROM messages");
     await pool.query("DELETE FROM active_chats");
-    wss.clients.forEach(client => { if (client.readyState === 1) client.send(JSON.stringify({ type: "delete_all" })); });
+    wss.clients.forEach(client => { 
+      if (client.readyState === 1) client.send(JSON.stringify({ type: "delete_all" })); 
+    });
     res.json({ message: "Everything deleted." });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-const PORT = process.env.PORT || 500
+// 🚀 START SERVER
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Server works on port ${PORT}`);
+});
