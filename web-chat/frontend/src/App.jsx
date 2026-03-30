@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef } from "react";
+import CryptoJS from 'crypto-js'; 
 import Login from "./Login";
 import Chat from "./Chat"; 
 import DeleteAccount from "./DeleteAccount";
 import ConnectUsername from "./ConnectUsername";
 import AvaliableUsers from "./AvaliableUsers";
-import ConnectionOneWithOne from "./ConnectionOneWithOne"; // ✅ Imported new component
+import ConnectionOneWithOne from "./ConnectionOneWithOne";
+
+
+const ENCRYPTION_KEY = import.meta.env.VITE_ENCRYPTION_KEY;
 
 function App() {
-  // 🧱 State Management
   const [showAvailableUsers, setShowAvailableUsers] = useState(false);
   const [showConnectModal, setShowConnectModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -15,9 +18,7 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
 
-  // 1v1 Chat State
-  const [chatPartner, setChatPartner] = useState(null); // ✅ Tracking 1v1 partner
-
+  const [chatPartner, setChatPartner] = useState(null);
   const [selectedMessageId, setSelectedMessageId] = useState(null);
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editContent, setEditContent] = useState("");
@@ -25,42 +26,58 @@ function App() {
   const ws = useRef(null);
   const chatBoxRef = useRef(null);
 
-  // 🔁 Auto-scroll to bottom when new messages arrive
+
+  const decryptMessage = (encryptedText) => {
+    try {
+      const bytes = CryptoJS.AES.decrypt(encryptedText, ENCRYPTION_KEY);
+      const originalText = bytes.toString(CryptoJS.enc.Utf8);
+      return originalText || "[Greška u dešifrovanju]";
+    } catch (e) {
+      console.log("❌ Greška: Neispravan ključ ili oštećeni podaci.");
+      console.error("Detalji greške:", e.message); 
+    }
+  };
+
   useEffect(() => {
     if (chatBoxRef.current) {
       chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // 🔁 Automatic login using localStorage
   useEffect(() => {
     const savedUser = localStorage.getItem("username");
-    if (savedUser) {
-      setUsername(savedUser);
-    }
+    if (savedUser) setUsername(savedUser);
   }, []);
 
-  // 🔗 WebSocket connection + Fetch initial messages (Global Chat)
   useEffect(() => {
-    if (username && !chatPartner) { // Only fetch global messages if NOT in 1v1
+    if (username && !chatPartner) {
       fetch("https://nextalk-backend-v4df.onrender.com/api/messages")
         .then((res) => res.json())
-        .then((data) => setMessages(data))
+        .then((data) => {
+       
+          const decryptedData = data.map(msg => ({
+            ...msg,
+            content: decryptMessage(msg.content)
+          }));
+          setMessages(decryptedData);
+        })
         .catch((err) => console.error("❌ Loading messages error:", err));
 
       if (!ws.current) {
         ws.current = new WebSocket("wss://nextalk-backend-v4df.onrender.com");
-
         ws.current.onmessage = (event) => {
           try {
             const msg = JSON.parse(event.data);
             if (msg.type === "message") {
               if (msg.data.username !== username) {
-                setMessages((prev) => [...prev, { ...msg.data, sender: "other" }]);
+             
+                const decryptedContent = decryptMessage(msg.data.content);
+                setMessages((prev) => [...prev, { ...msg.data, content: decryptedContent, sender: "other" }]);
               }
             } else if (msg.type === "edit") {
+              const decryptedEdit = decryptMessage(msg.data.content);
               setMessages(prev =>
-                prev.map(m => (m.id === msg.data.id || m._id === msg.data.id ? { ...m, content: msg.data.content } : m))
+                prev.map(m => (m.id === msg.data.id || m._id === msg.data.id ? { ...m, content: decryptedEdit } : m))
               );
             } else if (msg.type === "delete") {
               setMessages(prev => prev.filter(m => m.id !== msg.id && m._id !== msg.id));
@@ -69,32 +86,35 @@ function App() {
             console.error("❌ WebSocket parse error:", err);
           }
         };
-
         ws.current.onclose = () => { ws.current = null; };
       }
     }
     return () => { if (ws.current) ws.current.close(); };
   }, [username, chatPartner]);
 
-  // ✉️ Send a new message (Global Chat)
   const sendMessage = async () => {
     const text = input.trim();
     if (!text) return;
     setInput("");
 
+
+    const encryptedText = CryptoJS.AES.encrypt(text, ENCRYPTION_KEY).toString();
+
     try {
       const res = await fetch("https://nextalk-backend-v4df.onrender.com/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, content: text }),
+        body: JSON.stringify({ username, content: encryptedText }),
       });
       const data = await res.json();
-      setMessages((prev) => [...prev, { ...data, sender: "user" }]); 
+      
+      
+      setMessages((prev) => [...prev, { ...data, content: text, sender: "user" }]); 
 
       if (ws.current && ws.current.readyState === WebSocket.OPEN) {
         ws.current.send(JSON.stringify({ 
           type: "message", 
-          data: { id: data.id, username: data.username, content: data.content } 
+          data: { id: data.id, username: data.username, content: encryptedText } 
         }));
       }
     } catch (err) {
@@ -102,16 +122,17 @@ function App() {
     }
   };
 
-  // ✏️ Update an existing message
   const handleUpdate = async (id) => {
+    
+    const encryptedEdit = CryptoJS.AES.encrypt(editContent, ENCRYPTION_KEY).toString();
     try {
       const res = await fetch(`https://nextalk-backend-v4df.onrender.com/api/messages/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: editContent }),
+        body: JSON.stringify({ content: encryptedEdit }),
       });
-      const updatedData = await res.json();
-      setMessages((prev) => prev.map((m) => (m.id === id || m._id === id ? { ...m, content: updatedData.content } : m)));
+      await res.json();
+      setMessages((prev) => prev.map((m) => (m.id === id || m._id === id ? { ...m, content: editContent } : m)));
       setEditingMessageId(null);
       setSelectedMessageId(null);
     } catch (error) {
@@ -119,7 +140,6 @@ function App() {
     } 
   };
 
-  // 🔴 Delete a specific message
   const handleDelete = async (id) => {
     try {
       await fetch(`https://nextalk-backend-v4df.onrender.com/api/messages/${id}`, { method: "DELETE" });
@@ -130,7 +150,6 @@ function App() {
     }
   };
 
-  // 👤 Switch user logic
   const handleConnect = async (name) => {
     try {
       const res = await fetch(`https://nextalk-backend-v4df.onrender.com/api/users/check/${name}`);
@@ -145,111 +164,30 @@ function App() {
     }
   };
 
-  // ───────────── MODALS & SCREENS ─────────────
-
-  // ✅ 1. Available Users Screen
-  if (showAvailableUsers) {
-    return (
-      <AvaliableUsers 
-        onBackToConnect={() => {
-          setShowAvailableUsers(false);
-          setShowConnectModal(true);
-        }}
-        onConnect={(name) => { 
-          setChatPartner(name); // ✅ Trigger 1v1 chat mode
-          setShowAvailableUsers(false); 
-        }} 
-      />
-    );
-  }
-
-  // ✅ 2. Connect (Switch) Modal
-  if (showConnectModal) {
-    return (
-      <ConnectUsername 
-        onCancel={() => setShowConnectModal(false)} 
-        onShowAvailable={() => {
-          setShowConnectModal(false);
-          setShowAvailableUsers(true);
-        }}
-        onConfirm={(name) => { 
-          handleConnect(name); 
-          setShowConnectModal(false); 
-        }} 
-      />
-    );
-  }
-
-  // ✅ 3. Delete Account Screen
-  if (showDeleteConfirm) {
-    return (
-      <DeleteAccount 
-        username={username} 
-        onCancel={() => setShowDeleteConfirm(false)} 
-        onConfirm={async () => {
-          await fetch(`https://nextalk-backend-v4df.onrender.com/api/users/${username}`, { method: "DELETE" });
-          localStorage.removeItem("username");
-          setUsername("");
-          setMessages([]);
-          setShowDeleteConfirm(false);
-        }} 
-      />
-    );
-  }
-
-  // ✅ 4. Login Screen
+  if (showAvailableUsers) return <AvaliableUsers onBackToConnect={() => { setShowAvailableUsers(false); setShowConnectModal(true); }} onConnect={(name) => { setChatPartner(name); setShowAvailableUsers(false); }} />;
+  if (showConnectModal) return <ConnectUsername onCancel={() => setShowConnectModal(false)} onShowAvailable={() => { setShowConnectModal(false); setShowAvailableUsers(true); }} onConfirm={(name) => { handleConnect(name); setShowConnectModal(false); }} />;
+  if (showDeleteConfirm) return <DeleteAccount username={username} onCancel={() => setShowDeleteConfirm(false)} onConfirm={async () => { await fetch(`https://nextalk-backend-v4df.onrender.com/api/users/${username}`, { method: "DELETE" }); localStorage.removeItem("username"); setUsername(""); setMessages([]); setShowDeleteConfirm(false); }} />;
   if (!username) return <Login setUsername={(name) => { setUsername(name); localStorage.setItem("username", name); }} />;
+  if (chatPartner) return <ConnectionOneWithOne myName={username} otherUser={chatPartner} roomId={[username, chatPartner].sort().join("-")} onExit={() => setChatPartner(null)} />;
 
-  // ✅ 5. 🔄 1v1 PRIVATE CHAT SWITCH
-  if (chatPartner) {
-    return (
-      <ConnectionOneWithOne 
-        myName={username} 
-        otherUser={chatPartner} 
-        roomId={[username, chatPartner].sort().join("-")} // Generates unique ID
-        onExit={() => setChatPartner(null)} 
-      />
-    );
-  }
-
-  // ───────────── MAIN CHAT UI ─────────────
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-white text-gray-900 font-sans p-4">
       <h1 className="text-4xl font-black mb-6 tracking-tighter text-blue-600 italic">NexTalk</h1>
-
       <div className="w-full max-w-2xl flex flex-col shadow-2xl rounded-xl overflow-hidden border border-gray-200">
-        <div
-          ref={chatBoxRef}
-          className="h-[500px] bg-gray-400 p-4 flex flex-col gap-4 overflow-y-auto"
-          onClick={() => { setSelectedMessageId(null); setEditingMessageId(null); }}
-        >
+        <div ref={chatBoxRef} className="h-[500px] bg-gray-400 p-4 flex flex-col gap-4 overflow-y-auto" onClick={() => { setSelectedMessageId(null); setEditingMessageId(null); }}>
           {messages.map((msg, idx) => {
             const id = msg._id || msg.id || idx;
             const isSelected = selectedMessageId === id;
             const isEditing = editingMessageId === id;
             const isMe = msg.username === username;
-
             return (
               <div key={id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
                 {!isMe && <span className="text-xs font-bold text-orange-600 mb-1 ml-1 uppercase tracking-wider">{msg.username}</span>}
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedMessageId(isSelected ? null : id);
-                    setEditContent(msg.content);
-                  }}
-                  className={`p-3 rounded-2xl max-w-[85%] break-words relative cursor-pointer transition-all ${
-                    isMe ? "bg-blue-600 text-white rounded-tr-none shadow-md" : "bg-white text-gray-800 rounded-tl-none shadow-sm"
-                  } ${isSelected ? "ring-2 ring-blue-400 shadow-lg" : ""}`}
-                >
+                <div onClick={(e) => { e.stopPropagation(); setSelectedMessageId(isSelected ? null : id); setEditContent(msg.content); }}
+                  className={`p-3 rounded-2xl max-w-[85%] break-words relative cursor-pointer transition-all ${isMe ? "bg-blue-600 text-white rounded-tr-none shadow-md" : "bg-white text-gray-800 rounded-tl-none shadow-sm"} ${isSelected ? "ring-2 ring-blue-400 shadow-lg" : ""}`}>
                   {isEditing ? (
                     <div className="flex flex-col gap-2">
-                      <input 
-                        autoFocus
-                        value={editContent} 
-                        onChange={(e) => setEditContent(e.target.value)} 
-                        className="w-full bg-white text-black p-2 rounded border border-blue-500 outline-none" 
-                      />
+                      <input autoFocus value={editContent} onChange={(e) => setEditContent(e.target.value)} className="w-full bg-white text-black p-2 rounded border border-blue-500 outline-none" />
                       <div className="flex gap-2 justify-end">
                         <button onClick={() => handleUpdate(id)} className="bg-green-500 px-2 py-1 rounded text-xs font-bold uppercase text-white">Save</button>
                         <button onClick={() => setEditingMessageId(null)} className="bg-gray-400 px-2 py-1 rounded text-xs font-bold uppercase text-white">Cancel</button>
@@ -271,22 +209,11 @@ function App() {
             );
           })}
         </div>
-
         <div className="flex p-3 bg-gray-100 border-t border-gray-200 gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            placeholder="Write a message..."
-            className="flex-1 p-3 rounded-xl bg-white text-black outline-none border border-gray-300 focus:border-blue-500 transition-all"
-          />
-          <button onClick={sendMessage} className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center gap-2 transition-all active:scale-95 shadow-md">
-            <span>SEND ✈️</span>
-          </button>
+          <input type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendMessage()} placeholder="Write a message..." className="flex-1 p-3 rounded-xl bg-white text-black outline-none border border-gray-300 focus:border-blue-500 transition-all" />
+          <button onClick={sendMessage} className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center gap-2 transition-all active:scale-95 shadow-md"><span>SEND ✈️</span></button>
         </div>
       </div>
-
       <div className="w-full max-w-2xl grid grid-cols-2 mt-6 gap-4">
         <button onClick={() => setShowDeleteConfirm(true)} className="py-3 bg-yellow-400 hover:bg-yellow-500 text-black font-black rounded-xl transition-colors shadow-md uppercase">Delete Account</button>
         <button onClick={async () => { await fetch("https://nextalk-backend-v4df.onrender.com/api/sos", { method: "DELETE" }); localStorage.clear(); window.location.reload(); }} className="py-3 bg-red-500 hover:bg-red-600 text-white font-black rounded-xl transition-colors shadow-md uppercase">⚠️ SOS (WIPE)</button>
