@@ -26,17 +26,22 @@ function App() {
   const ws = useRef(null);
   const chatBoxRef = useRef(null);
 
-  // Funkcija za dešifrovanje
+  // --- DEBUG KONZOLA ---
+  useEffect(() => {
+    console.log("DEBUG: Trenutni ENCRYPTION_KEY:", ENCRYPTION_KEY);
+    if (!ENCRYPTION_KEY) {
+      console.error("❌ ALARM: VITE_ENCRYPTION_KEY NIJE UCITAN! Proveri Render settings!");
+    }
+  }, []);
+
   const decryptMessage = (encryptedText) => {
     if (!encryptedText) return "";
     try {
       const bytes = CryptoJS.AES.decrypt(encryptedText, ENCRYPTION_KEY);
       const originalText = bytes.toString(CryptoJS.enc.Utf8);
-      // Ako dešifrovanje ne vrati ništa, verovatno je stara nešifrovana poruka
       return originalText || encryptedText; 
     } catch (e) {
-      console.log("❌ Greška pri dešifrovanju. Moguće da poruka nije šifrovana." + e.message);
-      return encryptedText; // Vraćamo original ako dešifrovanje pukne
+      return encryptedText; 
     }
   };
 
@@ -53,7 +58,6 @@ function App() {
 
   useEffect(() => {
     if (username && !chatPartner) {
-      // 1. Učitavanje istorije poruka iz baze
       fetch("https://nextalk-backend-v4df.onrender.com/api/messages")
         .then((res) => res.json())
         .then((data) => {
@@ -65,13 +69,11 @@ function App() {
         })
         .catch((err) => console.error("❌ Loading messages error:", err));
 
-      // 2. WebSocket konekcija
       if (!ws.current) {
         ws.current = new WebSocket("wss://nextalk-backend-v4df.onrender.com");
         ws.current.onmessage = (event) => {
           try {
             const msg = JSON.parse(event.data);
-            
             if (msg.type === "message") {
               if (msg.data.username !== username) {
                 const decryptedContent = decryptMessage(msg.data.content);
@@ -97,24 +99,27 @@ function App() {
 
   const sendMessage = async () => {
     const text = input.trim();
-    if (!text || !ENCRYPTION_KEY) {
-        if(!ENCRYPTION_KEY) console.error("❌ ENCRYPTION_KEY nedostaje!");
-        return;
+    if (!text) return;
+    
+    if (!ENCRYPTION_KEY) {
+      alert("Greška: Enkripcijski ključ nije pronađen!");
+      return;
     }
-    setInput("");
 
-    // --- ENKRIPCIJA PRE SLANJA ---
+    // ŠIFROVANJE
     const encryptedText = CryptoJS.AES.encrypt(text, ENCRYPTION_KEY).toString();
+    console.log("DEBUG: Šaljem šifrovano:", encryptedText);
+
+    setInput("");
 
     try {
       const res = await fetch("https://nextalk-backend-v4df.onrender.com/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, content: encryptedText }),
+        body: JSON.stringify({ username, content: encryptedText }), // ŠALJEMO ENKRIPTOVANO
       });
       const data = await res.json();
       
-      // U lokalni state dodajemo čitljiv tekst da bi korisnik odmah video šta je poslao
       setMessages((prev) => [...prev, { ...data, content: text, sender: "user" }]); 
 
       if (ws.current && ws.current.readyState === WebSocket.OPEN) {
@@ -130,18 +135,13 @@ function App() {
 
   const handleUpdate = async (id) => {
     if (!editContent.trim()) return;
-    
-    // Šifrujemo izmenjen sadržaj
     const encryptedEdit = CryptoJS.AES.encrypt(editContent, ENCRYPTION_KEY).toString();
-    
     try {
-      const res = await fetch(`https://nextalk-backend-v4df.onrender.com/api/messages/${id}`, {
+      await fetch(`https://nextalk-backend-v4df.onrender.com/api/messages/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: encryptedEdit }),
       });
-      await res.json();
-      
       setMessages((prev) => prev.map((m) => (m.id === id || m._id === id ? { ...m, content: editContent } : m)));
       setEditingMessageId(null);
       setSelectedMessageId(null);
@@ -167,14 +167,13 @@ function App() {
         setUsername(name);
         localStorage.setItem("username", name);
       } else {
-        alert("User not found in the database.");
+        alert("User not found.");
       }
     } catch (err) {
       console.error(err);
     }
   };
 
-  // Rendering logika (Modalni dijalozi i Chat UI)
   if (showAvailableUsers) return <AvaliableUsers onBackToConnect={() => { setShowAvailableUsers(false); setShowConnectModal(true); }} onConnect={(name) => { setChatPartner(name); setShowAvailableUsers(false); }} />;
   if (showConnectModal) return <ConnectUsername onCancel={() => setShowConnectModal(false)} onShowAvailable={() => { setShowConnectModal(false); setShowAvailableUsers(true); }} onConfirm={(name) => { handleConnect(name); setShowConnectModal(false); }} />;
   if (showDeleteConfirm) return <DeleteAccount username={username} onCancel={() => setShowDeleteConfirm(false)} onConfirm={async () => { await fetch(`https://nextalk-backend-v4df.onrender.com/api/users/${username}`, { method: "DELETE" }); localStorage.removeItem("username"); setUsername(""); setMessages([]); setShowDeleteConfirm(false); }} />;
