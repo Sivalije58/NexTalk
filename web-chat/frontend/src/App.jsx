@@ -41,6 +41,7 @@ function App() {
       const originalText = bytes.toString(CryptoJS.enc.Utf8);
       return originalText || encryptedText; 
     } catch (e) {
+      console.error(e.message);
       return encryptedText; 
     }
   };
