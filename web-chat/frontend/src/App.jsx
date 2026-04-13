@@ -26,9 +26,8 @@ function App() {
   const ws = useRef(null);
   const chatBoxRef = useRef(null);
 
-  // --- DEBUG KONZOLA ---
+  // --- PROVERA KLJUČA (Bez ispisivanja same šifre) ---
   useEffect(() => {
-    console.log("DEBUG: Trenutni ENCRYPTION_KEY:", ENCRYPTION_KEY);
     if (!ENCRYPTION_KEY) {
       console.error("❌ ALARM: VITE_ENCRYPTION_KEY NIJE UCITAN! Proveri Render settings!");
     }
@@ -41,7 +40,6 @@ function App() {
       const originalText = bytes.toString(CryptoJS.enc.Utf8);
       return originalText || encryptedText; 
     } catch (e) {
-      console.error(e.message);
       return encryptedText; 
     }
   };
@@ -109,7 +107,6 @@ function App() {
 
     // ŠIFROVANJE
     const encryptedText = CryptoJS.AES.encrypt(text, ENCRYPTION_KEY).toString();
-    console.log("DEBUG: Šaljem šifrovano:", encryptedText);
 
     setInput("");
 
@@ -117,7 +114,7 @@ function App() {
       const res = await fetch("https://nextalk-backend-v4df.onrender.com/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, content: encryptedText }), // ŠALJEMO ENKRIPTOVANO
+        body: JSON.stringify({ username, content: encryptedText }),
       });
       const data = await res.json();
       
@@ -179,7 +176,17 @@ function App() {
   if (showConnectModal) return <ConnectUsername onCancel={() => setShowConnectModal(false)} onShowAvailable={() => { setShowConnectModal(false); setShowAvailableUsers(true); }} onConfirm={(name) => { handleConnect(name); setShowConnectModal(false); }} />;
   if (showDeleteConfirm) return <DeleteAccount username={username} onCancel={() => setShowDeleteConfirm(false)} onConfirm={async () => { await fetch(`https://nextalk-backend-v4df.onrender.com/api/users/${username}`, { method: "DELETE" }); localStorage.removeItem("username"); setUsername(""); setMessages([]); setShowDeleteConfirm(false); }} />;
   if (!username) return <Login setUsername={(name) => { setUsername(name); localStorage.setItem("username", name); }} />;
-  if (chatPartner) return <ConnectionOneWithOne myName={username} otherUser={chatPartner} roomId={[username, chatPartner].sort().join("-")} onExit={() => setChatPartner(null)} />;
+  
+  // PROSLEĐIVANJE KLJUČA U PRIVATNU SOBU
+  if (chatPartner) return (
+    <ConnectionOneWithOne 
+      myName={username} 
+      otherUser={chatPartner} 
+      roomId={[username, chatPartner].sort().join("-")} 
+      onExit={() => setChatPartner(null)} 
+      encryptionKey={ENCRYPTION_KEY} // <-- KLJUČ IDE OVDE
+    />
+  );
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-white text-gray-900 font-sans p-4">
