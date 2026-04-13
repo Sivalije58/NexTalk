@@ -82,23 +82,47 @@ function ConnectionOneWithOne({ myName, otherUser, roomId, onExit, encryptionKey
   }, [roomId, myName, otherUser]);
 
   // CRUD FUNCTIONS
+  // const sendMessage = async () => {
+  //   const text = input.trim();
+  //   if (!text) return;
+    
+  //   const encryptedText = encrypt(text);
+    
+  //   // Odmah očistiš input
+  //   setInput("");
+
+  //   // Opciono: Dodaj poruku lokalno da korisnik odmah vidi šta je poslao
+  //   // setMessages((prev) => [...prev, { username: myName, content: text, id: Date.now() }]);
+
+  //   try {
+  //     await fetch(`${BACKEND_URL}/api/messages`, {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ username: myName, content: encryptedText, room_id: roomId })
+  //     });
+  //   } catch (err) {
+  //     console.error("❌ Greška pri slanju:", err);
+  //   }
+  // };
+
   const sendMessage = async () => {
     const text = input.trim();
     if (!text) return;
     
     const encryptedText = encrypt(text);
     
-    // Odmah očistiš input
     setInput("");
-
-    // Opciono: Dodaj poruku lokalno da korisnik odmah vidi šta je poslao
-    // setMessages((prev) => [...prev, { username: myName, content: text, id: Date.now() }]);
 
     try {
       await fetch(`${BACKEND_URL}/api/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: myName, content: encryptedText, room_id: roomId })
+        body: JSON.stringify({ 
+          username: myName, 
+          content: encryptedText, 
+          room_id: roomId,
+          isPrivate: true // DODAJ OVO
+        }),
       });
     } catch (err) {
       console.error("❌ Greška pri slanju:", err);
