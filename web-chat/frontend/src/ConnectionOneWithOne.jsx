@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
+import CryptoJS from 'crypto-js'; // DODAJ IMPORT
 
-function ConnectionOneWithOne({ myName, otherUser, roomId, onExit }) {
+function ConnectionOneWithOne({ myName, otherUser, roomId, onExit, encryptionKey }) { // DODAJ encryptionKey u props
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   
@@ -12,6 +13,20 @@ function ConnectionOneWithOne({ myName, otherUser, roomId, onExit }) {
   const chatBoxRef = useRef(null);
   const ws = useRef(null);
   const BACKEND_URL = "https://nextalk-backend-v4df.onrender.com";
+
+  // POMOĆNE FUNKCIJE ZA ENKRIPCIJU
+  const encrypt = (text) => {
+    return CryptoJS.AES.encrypt(text, encryptionKey).toString();
+  };
+
+  const decrypt = (txt) => {
+    if (!txt) return "";
+    try {
+      const bytes = CryptoJS.AES.decrypt(txt, encryptionKey);
+      const originalText = bytes.toString(CryptoJS.enc.Utf8);
+      return originalText || txt;
+    } catch { return txt; }
+  };
 
   useEffect(() => {
     if (chatBoxRef.current) {
@@ -30,7 +45,12 @@ function ConnectionOneWithOne({ myName, otherUser, roomId, onExit }) {
 
         const res = await fetch(`${BACKEND_URL}/api/messages/${roomId}`);
         const data = await res.json();
-        if (Array.isArray(data)) setMessages(data);
+        
+        if (Array.isArray(data)) {
+          // Dešifrujemo stare poruke iz baze
+          const decryptedData = data.map(m => ({ ...m, content: decrypt(m.content) }));
+          setMessages(decryptedData);
+        }
       } catch (err) {
         console.error("❌ Connection error:", err);
       }
@@ -44,9 +64,12 @@ function ConnectionOneWithOne({ myName, otherUser, roomId, onExit }) {
         const msg = JSON.parse(event.data);
         
         if (msg.type === "message" && msg.data.room_id === roomId) {
-          setMessages((prev) => [...prev, msg.data]);
+          // Dešifrujemo novu poruku koja stiže preko WS
+          const decryptedMsg = { ...msg.data, content: decrypt(msg.data.content) };
+          setMessages((prev) => [...prev, decryptedMsg]);
         } else if (msg.type === "edit") {
-          setMessages(prev => prev.map(m => m.id === parseInt(msg.data.id) ? { ...m, content: msg.data.content } : m));
+          const decryptedEdit = decrypt(msg.data.content);
+          setMessages(prev => prev.map(m => m.id === parseInt(msg.data.id) ? { ...m, content: decryptedEdit } : m));
         } else if (msg.type === "delete") {
           setMessages(prev => prev.filter(m => m.id !== parseInt(msg.id)));
         }
@@ -60,22 +83,39 @@ function ConnectionOneWithOne({ myName, otherUser, roomId, onExit }) {
 
   // CRUD FUNCTIONS
   const sendMessage = async () => {
-    if (!input.trim()) return;
-    const text = input;
+    const text = input.trim();
+    if (!text) return;
+    
+    const encryptedText = encrypt(text);
+    
+    // Odmah očistiš input
     setInput("");
-    await fetch(`${BACKEND_URL}/api/messages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: myName, content: text, room_id: roomId })
-    });
+
+    // Opciono: Dodaj poruku lokalno da korisnik odmah vidi šta je poslao
+    // setMessages((prev) => [...prev, { username: myName, content: text, id: Date.now() }]);
+
+    try {
+      await fetch(`${BACKEND_URL}/api/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: myName, content: encryptedText, room_id: roomId })
+      });
+    } catch (err) {
+      console.error("❌ Greška pri slanju:", err);
+    }
   };
 
   const handleUpdate = async (id) => {
+    if (!editContent.trim()) return;
+    
+    // ŠIFRUJEMO IZMENU
+    const encryptedEdit = encrypt(editContent.trim());
+    
     try {
       const res = await fetch(`${BACKEND_URL}/api/messages/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: editContent }),
+        body: JSON.stringify({ content: encryptedEdit }),
       });
       if (res.ok) {
         setEditingMessageId(null);
