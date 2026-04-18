@@ -11,7 +11,7 @@ NexTalk is a high-performance, real-time chat application built to demonstrate s
 * **Full Message Control**: Real-time CRUD operations (Edit/Delete) using WebSocket events.
 * **Automatic UI Updates**: Intelligent auto-scroll to the latest message for better UX.
 * **Session Management**: Local storage integration for persistent user identity.
-* **Client-Side Encryption: All messages are encrypted using AES-256 (CryptoJS) before leaving the browser. This ensures that even the database provider cannot read private conversations.
+* **Client-Side Encryption**: All messages are encrypted using AES-256 (CryptoJS) before leaving the browser. This ensures that even the database provider cannot read private conversations.
 
 ## 🛠 Tech Stack
 
