@@ -15,7 +15,7 @@ NexTalk is a high-performance, real-time chat application built to demonstrate s
 
 ## 🛠 Tech Stack
 
-* **Frontend**: React (Vite), Tailwind CSS
+* **Frontend**: React (Vite), Tailwind CSS, CryptoJS
 * **Backend**: Node.js
 * **Database**: Neon (PostgreSQL)
 * **Communication**: WebSockets (WS)
